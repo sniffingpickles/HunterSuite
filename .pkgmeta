@@ -1,0 +1,6 @@
+package-as: HunterSuite
+
+ignore:
+  - README.md
+  - .gitignore
+  - "*.zip"
