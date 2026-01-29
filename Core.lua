@@ -29,6 +29,33 @@ HunterSuite.DIET_TYPES = {
     "Meat", "Fish", "Cheese", "Bread", "Fungus", "Fruit"
 }
 
+-- Pet family food preferences (TBC)
+-- Used as fallback if GetPetFoodTypes() doesn't work correctly
+HunterSuite.PET_FAMILY_DIETS = {
+    ["Bat"]          = { "Fruit", "Fungus" },
+    ["Bear"]         = { "Fruit", "Fungus", "Cheese", "Bread", "Meat", "Fish" },
+    ["Boar"]         = { "Fruit", "Fungus", "Cheese", "Bread", "Meat", "Fish" },
+    ["Carrion Bird"] = { "Meat", "Fish" },
+    ["Cat"]          = { "Meat", "Fish" },
+    ["Crab"]         = { "Bread", "Fruit", "Fish", "Fungus" },
+    ["Crocolisk"]    = { "Meat", "Fish" },
+    ["Gorilla"]      = { "Fungus", "Fruit" },
+    ["Hyena"]        = { "Fruit", "Meat" },
+    ["Owl"]          = { "Meat" },
+    ["Raptor"]       = { "Meat" },
+    ["Scorpid"]      = { "Meat" },
+    ["Spider"]       = { "Meat" },
+    ["Tallstrider"]  = { "Fruit", "Fungus" },
+    ["Turtle"]       = { "Fruit", "Fungus", "Fish" },
+    ["Wind Serpent"] = { "Bread", "Fish", "Cheese" },
+    ["Wolf"]         = { "Meat" },
+    -- Aliases
+    ["Vulture"]      = { "Meat", "Fish" },
+    ["Lion"]         = { "Meat", "Fish" },
+    ["Strider"]      = { "Meat", "Fish" },
+    ["Worg"]         = { "Meat" },
+}
+
 -- Default settings for all modules
 HunterSuite.defaults = {
     -- Pet Feed module
@@ -72,6 +99,10 @@ HunterSuite.defaults = {
         windupText = "",        -- Empty = show time remaining  
         queueText = "QUEUE",    -- Text shown in queue window
         waitText = "WAIT",      -- Text when timer overdue
+        showClippingMarkers = true, -- Show visual tick marks for safe/danger zones
+        showDelayTimer = true,      -- Show how much last shot was clipped
+        showGCDBar = true,          -- Show GCD bar below autoshot bar
+        oocAlpha = 0.3,             -- Out of combat alpha (0 to hide completely)
     },
     -- Aspect reminder module
     aspects = {
@@ -242,11 +273,24 @@ function HunterSuite:GetPetDiet()
         return diet
     end
     
-    local foodTypes = GetPetFoodTypes()
-    if foodTypes then
-        for foodType in string.gmatch(foodTypes, "[^,]+") do
-            foodType = foodType:match("^%s*(.-)%s*$")
+    -- ALWAYS use pet family lookup - API is unreliable (returns incomplete data)
+    local petFamily = UnitCreatureFamily("pet")
+    if petFamily and self.PET_FAMILY_DIETS[petFamily] then
+        for _, foodType in ipairs(self.PET_FAMILY_DIETS[petFamily]) do
             table.insert(diet, foodType)
+        end
+    end
+    
+    -- Fallback to API if we don't have the pet family in our database
+    if #diet == 0 then
+        local foodTypes = GetPetFoodTypes()
+        if foodTypes and foodTypes ~= "" then
+            for foodType in string.gmatch(foodTypes, "[^,]+") do
+                foodType = foodType:match("^%s*(.-)%s*$")
+                -- Normalize to title case for matching
+                foodType = foodType:sub(1,1):upper() .. foodType:sub(2):lower()
+                table.insert(diet, foodType)
+            end
         end
     end
     
@@ -721,6 +765,64 @@ SlashCmdList["HUNTERSUITE"] = function(msg)
         HunterSuite:InitDB()
         print("|cff00ff00Hunter Suite|r settings reset to defaults!")
         ReloadUI()
+    elseif msg == "debug" then
+        print("|cff00ff00Hunter Suite|r Debug Info:")
+        local db = HunterSuite.db.autoShot
+        print("  showClippingMarkers: " .. tostring(db.showClippingMarkers))
+        print("  showDelayTimer: " .. tostring(db.showDelayTimer))
+        print("  showGCDBar: " .. tostring(db.showGCDBar))
+        print("  oocAlpha: " .. tostring(db.oocAlpha))
+        print("  enabled: " .. tostring(db.enabled))
+        -- Check GCD detection
+        local start, duration = GetSpellCooldown(3044)  -- Arcane Shot
+        print("  GCD (Arcane Shot): start=" .. tostring(start) .. " dur=" .. tostring(duration))
+        -- Pet info
+        print("|cff00ff00Pet Info:|r")
+        local petFamily = UnitCreatureFamily("pet") or "none"
+        print("  Pet Family: " .. petFamily)
+        local apiDiet = GetPetFoodTypes() or "none"
+        print("  API Diet: " .. apiDiet)
+        HunterSuite:UpdatePetState()
+        local diet = table.concat(HunterSuite.state.petDiet, ", ")
+        print("  Resolved Diet: " .. (diet ~= "" and diet or "none"))
+        local food = HunterSuite:FindBestFood()
+        if food then
+            print("  Best Food: " .. (food.name or "ID:" .. food.itemID) .. " (type: " .. (HunterSuite.FoodDB[food.itemID] and HunterSuite.FoodDB[food.itemID].type or "unknown") .. ")")
+        else
+            print("  Best Food: none found")
+        end
+    elseif msg == "food" then
+        print("|cff00ff00Hunter Suite|r Food in bags:")
+        local foundAny = false
+        for bag = 0, 4 do
+            local numSlots = C_Container and C_Container.GetContainerNumSlots(bag) or GetContainerNumSlots(bag)
+            for slot = 1, numSlots do
+                local itemInfo
+                if C_Container and C_Container.GetContainerItemInfo then
+                    itemInfo = C_Container.GetContainerItemInfo(bag, slot)
+                else
+                    local texture, itemCount, locked, quality, readable, lootable, itemLink = GetContainerItemInfo(bag, slot)
+                    if texture then
+                        itemInfo = { stackCount = itemCount }
+                        if itemLink then itemInfo.itemID = GetItemInfoInstant(itemLink) end
+                    end
+                end
+                if itemInfo and itemInfo.itemID then
+                    local itemID = itemInfo.itemID
+                    local foodEntry = HunterSuite.FoodDB[itemID]
+                    if foodEntry then
+                        local itemName = GetItemInfo(itemID) or ("ID:" .. itemID)
+                        local count = GetItemCount(itemID) or 1
+                        print("  " .. itemName .. " x" .. count .. " |cffaaaaaa(" .. foodEntry.type .. ", lvl " .. (foodEntry.level or "?") .. ")|r")
+                        foundAny = true
+                    end
+                end
+            end
+        end
+        if not foundAny then
+            print("  No recognized pet food found!")
+            print("  |cffaaaaaaYour pet eats: " .. table.concat(HunterSuite.state.petDiet or {}, ", ") .. "|r")
+        end
     else
         if HunterSuite.ShowSettings then
             HunterSuite:ShowSettings()

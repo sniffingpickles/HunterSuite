@@ -1,21 +1,18 @@
 -- HunterSuite Range Module
--- Shows range indicator with dead zone detection
+-- Range indicator using LibRangeCheck-3.0
 
 local Range = {}
 HunterSuite.Range = Range
+
+-- Get the library
+local rc = LibStub("LibRangeCheck-3.0")
 
 local rangeFrame = nil
 local rangeText = nil
 local lastUpdate = 0
 
-local RANGE_STATE = {
-    NONE = 0,
-    IN_RANGE = 1,
-    OUT_OF_RANGE = 2,
-    DEAD_ZONE = 3,
-}
-
-local currentState = RANGE_STATE.NONE
+local currentMinRange = nil
+local currentMaxRange = nil
 
 -- Create the range indicator
 function Range:CreateIndicator()
@@ -86,7 +83,7 @@ function Range:CreateIndicator()
     return rangeFrame
 end
 
--- Check range to target
+-- Check range to target using LibRangeCheck-3.0
 function Range:CheckRange()
     if not rangeFrame then return end
     
@@ -95,7 +92,9 @@ function Range:CheckRange()
     -- Edit mode - show sample
     if HunterSuite.state.editMode then
         rangeFrame:Show()
-        self:SetState(RANGE_STATE.IN_RANGE)
+        currentMinRange = 15
+        currentMaxRange = 25
+        self:UpdateDisplay()
         return
     end
     
@@ -109,63 +108,75 @@ function Range:CheckRange()
     
     if not hasValidTarget then
         if db.showAlways then
-            -- Show with "no target" state
-            self:SetState(RANGE_STATE.NONE)
+            currentMinRange = nil
+            currentMaxRange = nil
+            self:UpdateDisplay()
             rangeFrame:Show()
         else
             rangeFrame:Hide()
-            currentState = RANGE_STATE.NONE
         end
         return
     end
     
-    -- TBC Anniversary: Use CheckInteractDistance for range detection
-    -- Distance 1 = 10 yards (inspect), 2 = 11.11 yards (trade), 3 = 9.9 yards (duel), 4 = 28 yards (follow)
-    local inMeleeRange = CheckInteractDistance("target", 3)  -- ~10 yards (melee/dead zone)
-    local inRangedRange = CheckInteractDistance("target", 4)  -- ~28 yards (within follow range)
-    
-    -- For more accuracy, also check if we're beyond melee but can still shoot
-    -- Dead zone in TBC is roughly 5-8 yards (too close for ranged, too far for melee)
-    -- We approximate: melee < 8yd, dead zone 8-8yd (tiny), ranged 8-35yd
-    
-    -- Determine state based on distance checks
-    if inMeleeRange then
-        -- Very close - could be dead zone or melee range
-        -- CheckInteractDistance(3) is ~10yd, so if we're this close, we're in dead zone territory
-        self:SetState(RANGE_STATE.DEAD_ZONE)
-    elseif inRangedRange then
-        -- Within 28 yards but not in melee - good ranged distance
-        self:SetState(RANGE_STATE.IN_RANGE)
-    else
-        -- Too far
-        self:SetState(RANGE_STATE.OUT_OF_RANGE)
-    end
-    
+    -- Get range from LibRangeCheck-3.0
+    currentMinRange, currentMaxRange = rc:GetRange("target")
+    self:UpdateDisplay()
     rangeFrame:Show()
 end
 
--- Set visual state
-function Range:SetState(state)
+-- Update display based on range
+function Range:UpdateDisplay()
     if not rangeFrame then return end
     
-    currentState = state
+    local db = HunterSuite.db.range
+    local style = db.style or "text"
     
-    if state == RANGE_STATE.IN_RANGE then
-        rangeFrame:SetBackdropColor(0.2, 0.7, 0.2, 0.9)
-        rangeFrame:SetBackdropBorderColor(0.3, 0.8, 0.3, 1)
-        rangeText:SetText("IN RANGE")
-    elseif state == RANGE_STATE.OUT_OF_RANGE then
-        rangeFrame:SetBackdropColor(0.7, 0.2, 0.2, 0.9)
-        rangeFrame:SetBackdropBorderColor(0.8, 0.3, 0.3, 1)
-        rangeText:SetText("TOO FAR")
-    elseif state == RANGE_STATE.DEAD_ZONE then
-        rangeFrame:SetBackdropColor(0.6, 0.2, 0.6, 0.9)
-        rangeFrame:SetBackdropBorderColor(0.7, 0.3, 0.7, 1)
-        rangeText:SetText("DEAD ZONE")
-    elseif state == RANGE_STATE.NONE then
-        rangeFrame:SetBackdropColor(0.3, 0.3, 0.3, 0.7)
-        rangeFrame:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
-        rangeText:SetText("NO TARGET")
+    local r, g, b = 1, 1, 1
+    local text = ""
+    
+    if currentMinRange == nil and currentMaxRange == nil then
+        -- No target
+        r, g, b = 0.5, 0.5, 0.5  -- Gray
+        text = "NO TARGET"
+    elseif currentMinRange and currentMinRange < 8 then
+        -- Dead zone (too close for ranged)
+        r, g, b = 0.8, 0.2, 0.8  -- Purple
+        text = "DEAD ZONE"
+    elseif currentMaxRange and currentMaxRange <= 35 then
+        -- In ranged attack range (good!)
+        r, g, b = 0.2, 0.9, 0.2  -- Green
+        if currentMinRange and currentMaxRange then
+            text = string.format("%d - %d", currentMinRange, currentMaxRange)
+        else
+            text = "IN RANGE"
+        end
+    elseif currentMinRange and currentMinRange >= 35 then
+        -- Too far
+        r, g, b = 0.9, 0.2, 0.2  -- Red
+        text = "TOO FAR"
+    else
+        -- Unknown/transitional
+        r, g, b = 1.0, 0.8, 0.0  -- Yellow
+        if currentMinRange and currentMaxRange then
+            text = string.format("%d - %d", currentMinRange, currentMaxRange)
+        elseif currentMinRange then
+            text = string.format("%d+", currentMinRange)
+        else
+            text = "???"
+        end
+    end
+    
+    -- Set colors
+    rangeFrame:SetBackdropColor(r * 0.3, g * 0.3, b * 0.3, 0.9)
+    rangeFrame:SetBackdropBorderColor(r * 0.5, g * 0.5, b * 0.5, 1)
+    rangeText:SetTextColor(r, g, b, 1)
+    
+    -- Set text
+    if style == "dot" then
+        rangeText:Hide()
+    else
+        rangeText:Show()
+        rangeText:SetText(text)
     end
 end
 
@@ -180,12 +191,12 @@ function Range:ApplyStyle()
         rangeFrame:SetSize(16, 16)
         rangeText:Hide()
     else  -- "text"
-        rangeFrame:SetSize(70, 20)
+        rangeFrame:SetSize(80, 22)  -- Slightly wider for "XX - XX" format
         rangeText:Show()
     end
     
-    -- Re-apply current state visuals
-    self:SetState(currentState)
+    -- Re-apply current display
+    self:UpdateDisplay()
 end
 
 -- Update visibility

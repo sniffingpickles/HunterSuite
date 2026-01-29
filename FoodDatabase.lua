@@ -10,12 +10,22 @@ local _, HunterSuite = ...
 
 HunterSuite.FoodDB = {
     -- ============ MEAT ============
-    -- Common Meats
+    -- Common Raw Meats
     [2672]  = { type = "Meat", level = 5 },   -- Stringy Wolf Meat
     [769]   = { type = "Meat", level = 5 },   -- Chunk of Boar Meat
+    [2674]  = { type = "Meat", level = 5 },   -- Crawler Claw
+    [723]   = { type = "Meat", level = 5 },   -- Goretusk Liver
+    [1015]  = { type = "Meat", level = 10 },  -- Lean Wolf Flank
     [2673]  = { type = "Meat", level = 10 },  -- Coyote Meat
     [2677]  = { type = "Meat", level = 15 },  -- Boar Ribs
     [2675]  = { type = "Meat", level = 15 },  -- Crawler Meat
+    [1080]  = { type = "Meat", level = 10 },  -- Tough Condor Meat
+    [3173]  = { type = "Meat", level = 10 },  -- Bear Meat
+    [3712]  = { type = "Meat", level = 15 },  -- Turtle Meat
+    [3731]  = { type = "Meat", level = 20 },  -- Lion Meat
+    [12202] = { type = "Meat", level = 25 },  -- Tiger Meat
+    [12203] = { type = "Meat", level = 30 },  -- Red Wolf Meat
+    [12204] = { type = "Meat", level = 35 },  -- Heavy Kodo Meat
     [12037] = { type = "Meat", level = 20 },  -- Mystery Meat
     [12184] = { type = "Meat", level = 25 },  -- Raptor Flesh
     [12223] = { type = "Meat", level = 35 },  -- Meaty Bat Wing
@@ -27,6 +37,20 @@ HunterSuite.FoodDB = {
     [31670] = { type = "Meat", level = 65 },  -- Raptor Ribs
     [31671] = { type = "Meat", level = 68 },  -- Bat Flesh
     [35562] = { type = "Meat", level = 70 },  -- Bear Flank
+    -- Spider Meats
+    [2251]  = { type = "Meat", level = 5 },   -- Gooey Spider Leg
+    [1081]  = { type = "Meat", level = 10 },  -- Crisp Spider Meat
+    [12205] = { type = "Meat", level = 20 },  -- White Spider Meat
+    [12206] = { type = "Meat", level = 35 },  -- Tender Crab Meat
+    -- Scorpid/Buzzard Meats
+    [3404]  = { type = "Meat", level = 20 },  -- Buzzard Wing
+    [5467]  = { type = "Meat", level = 25 },  -- Kodo Meat
+    [5468]  = { type = "Meat", level = 30 },  -- Soft Frenzy Flesh
+    [5471]  = { type = "Meat", level = 35 },  -- Stag Meat
+    [5472]  = { type = "Meat", level = 40 },  -- Scorpid Stinger
+    -- Other Meats
+    [3730]  = { type = "Meat", level = 15 },  -- Big Bear Meat
+    [12208] = { type = "Meat", level = 40 },  -- Tender Wolf Meat
     
     -- Cooked Meats
     [2680]  = { type = "Meat", level = 5 },   -- Spiced Wolf Meat

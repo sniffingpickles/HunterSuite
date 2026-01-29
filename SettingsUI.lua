@@ -448,6 +448,30 @@ local function CreateAutoShotContent(parent)
         HunterSuite.db.autoShot.latencyComp = value
     end)
     latencyToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local showClipping = HunterSuite.db.autoShot.showClippingMarkers
+    if showClipping == nil then showClipping = true end
+    local clippingToggle = CreateToggle(content, "Show Clipping Markers", showClipping, function(value)
+        HunterSuite.db.autoShot.showClippingMarkers = value
+    end)
+    clippingToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local showDelay = HunterSuite.db.autoShot.showDelayTimer
+    if showDelay == nil then showDelay = true end
+    local delayToggle = CreateToggle(content, "Show Delay Timer", showDelay, function(value)
+        HunterSuite.db.autoShot.showDelayTimer = value
+    end)
+    delayToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local showGCD = HunterSuite.db.autoShot.showGCDBar
+    if showGCD == nil then showGCD = true end
+    local gcdToggle = CreateToggle(content, "Show GCD Bar", showGCD, function(value)
+        HunterSuite.db.autoShot.showGCDBar = value
+    end)
+    gcdToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
     y = y - 45
     
     -- Appearance header
@@ -476,6 +500,17 @@ local function CreateAutoShotContent(parent)
         if HunterSuite.AutoShot then HunterSuite.AutoShot:UpdateUI() end
     end)
     heightSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local oocAlpha = HunterSuite.db.autoShot.oocAlpha
+    if oocAlpha == nil then oocAlpha = 0.3 end
+    local oocAlphaSlider = CreateSlider(content, "Out of Combat Alpha", 0, 1.0, 0.1, oocAlpha, function(value)
+        HunterSuite.db.autoShot.oocAlpha = value
+        if not InCombatLockdown() and HunterSuite.AutoShot and HunterSuite.AutoShot.timerFrame then
+            HunterSuite.AutoShot.timerFrame:SetAlpha(value)
+        end
+    end)
+    oocAlphaSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
     y = y - 45
     
     -- Timing header

@@ -28,11 +28,19 @@ local timerFrame = nil
 local timerBar = nil
 local timeText = nil
 local zoneText = nil  -- Shows current zone (SAFE/WINDUP/QUEUE)
+local safeMarker = nil  -- Tick mark at safe zone end
+local queueMarker = nil -- Tick mark at queue zone start
+local delayText = nil   -- Shows how much last shot was clipped
+local gcdBar = nil      -- GCD indicator bar
 local isAutoShooting = false
 local lastShotTime = 0  -- Time when Auto Shot projectile left (end of windup)
+local expectedShotTime = 0  -- When shot should have fired (for delay calc)
+local lastDelay = 0     -- How much last shot was delayed
 local shotSpeed = 0
 local playerGUID = nil
 local waitingForFirstShot = false  -- True until we see our first shot event
+local gcdStart = 0      -- GCD start time
+local gcdDuration = 0   -- GCD duration
 
 -- Get network latency in seconds
 local function GetLatencySeconds()
@@ -99,6 +107,40 @@ function AutoShot:CreateBar()
     timeText:SetPoint("RIGHT", timerBar, "RIGHT", -4, 0)
     timeText:SetTextColor(1, 1, 1, 1)
     
+    -- Clipping markers (tick marks showing zone boundaries)
+    -- Safe zone end marker (red line - stop casting here)
+    safeMarker = timerBar:CreateTexture(nil, "OVERLAY")
+    safeMarker:SetSize(2, db.barHeight + 4)
+    safeMarker:SetColorTexture(0.9, 0.2, 0.2, 1)  -- Red
+    safeMarker:SetPoint("CENTER", timerBar, "LEFT", 0, 0)  -- Will be positioned in OnUpdate
+    
+    -- Queue zone start marker (blue line - queue ability here)
+    queueMarker = timerBar:CreateTexture(nil, "OVERLAY")
+    queueMarker:SetSize(2, db.barHeight + 4)
+    queueMarker:SetColorTexture(0.2, 0.6, 1.0, 1)  -- Blue
+    queueMarker:SetPoint("CENTER", timerBar, "LEFT", 0, 0)  -- Will be positioned in OnUpdate
+    
+    -- Delay text (shows how much last shot was clipped)
+    delayText = timerFrame:CreateFontString(nil, "OVERLAY")
+    delayText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
+    delayText:SetPoint("TOP", timerFrame, "BOTTOM", 0, -2)
+    delayText:SetTextColor(1, 0.3, 0.3, 1)  -- Red for delay
+    delayText:Hide()
+    
+    -- GCD bar (thin bar below main bar)
+    gcdBar = CreateFrame("StatusBar", "HunterSuiteGCDBar", timerFrame)
+    gcdBar:SetSize(db.barWidth, 4)
+    gcdBar:SetPoint("TOP", timerFrame, "BOTTOM", 0, -1)
+    gcdBar:SetStatusBarTexture([[Interface\Buttons\WHITE8X8]])
+    gcdBar:SetStatusBarColor(0.8, 0.8, 0.2, 0.8)  -- Yellow for GCD
+    gcdBar:SetMinMaxValues(0, 1)
+    gcdBar:SetValue(0)
+    
+    local gcdBg = gcdBar:CreateTexture(nil, "BACKGROUND")
+    gcdBg:SetAllPoints()
+    gcdBg:SetColorTexture(0.1, 0.1, 0.1, 0.6)
+    gcdBar:Hide()
+    
     -- Dragging (only in edit mode)
     timerFrame:SetScript("OnDragStart", function(self)
         if HunterSuite.state.editMode then
@@ -126,6 +168,9 @@ function AutoShot:CreateBar()
     timerFrame:RegisterEvent("UNIT_RANGEDDAMAGE")         -- For weapon speed updates
     timerFrame:RegisterEvent("PLAYER_LOGIN")
     timerFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    timerFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")     -- For GCD tracking
+    timerFrame:RegisterEvent("PLAYER_REGEN_DISABLED")     -- Enter combat
+    timerFrame:RegisterEvent("PLAYER_REGEN_ENABLED")      -- Leave combat
     
     timerFrame:SetScript("OnEvent", function(self, event, ...)
         AutoShot:OnEvent(event, ...)
@@ -175,7 +220,28 @@ function AutoShot:OnEvent(event, ...)
         local spellName = spellId and GetSpellInfo(spellId) or select(2, ...)
         
         if unit == "player" and (spellId == AUTO_SHOT_ID or spellName == AUTO_SHOT_NAME) then
-            lastShotTime = GetTime()
+            local now = GetTime()
+            
+            -- Calculate delay (how much the shot was clipped)
+            if expectedShotTime > 0 and now > expectedShotTime then
+                lastDelay = now - expectedShotTime
+                if lastDelay > 0.05 then  -- Only show delays > 50ms
+                    local showDelay = HunterSuite.db.autoShot.showDelayTimer
+                    if showDelay == nil then showDelay = true end  -- Default to true
+                    if delayText and showDelay then
+                        delayText:SetText(string.format("-%.2fs", lastDelay))
+                        delayText:Show()
+                    end
+                else
+                    lastDelay = 0
+                    if delayText then delayText:Hide() end
+                end
+            else
+                if delayText then delayText:Hide() end
+            end
+            
+            lastShotTime = now
+            expectedShotTime = now + shotSpeed  -- Next expected shot
             waitingForFirstShot = false
             self:UpdateShotSpeed()
         end
@@ -202,6 +268,46 @@ function AutoShot:OnEvent(event, ...)
         if unit == "player" then
             self:UpdateShotSpeed()
         end
+        
+    elseif event == "SPELL_UPDATE_COOLDOWN" then
+        -- Track GCD using global cooldown spell (use any instant spell the hunter has)
+        -- Try multiple spells to find one that shows GCD
+        local start, duration
+        
+        -- Try Arcane Shot (ID 3044) - most hunters have this
+        start, duration = GetSpellCooldown(3044)
+        if not (start and start > 0 and duration and duration > 0 and duration <= 1.5) then
+            -- Try Disengage (ID 781)
+            start, duration = GetSpellCooldown(781)
+        end
+        if not (start and start > 0 and duration and duration > 0 and duration <= 1.5) then
+            -- Try Hunter's Mark (ID 1130)
+            start, duration = GetSpellCooldown(1130)
+        end
+        
+        if start and start > 0 and duration and duration > 0 and duration <= 1.5 then
+            gcdStart = start
+            gcdDuration = duration
+        end
+        
+    elseif event == "PLAYER_REGEN_DISABLED" then
+        -- Entering combat
+        if HunterSuite.db.autoShot.enabled then
+            local alpha = HunterSuite.db.autoShot.alpha or 1
+            timerFrame:SetAlpha(alpha)
+        end
+        
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        -- Leaving combat - apply out of combat alpha
+        local oocAlpha = HunterSuite.db.autoShot.oocAlpha
+        if oocAlpha == nil then oocAlpha = 0.3 end  -- Default to 0.3
+        if HunterSuite.db.autoShot.enabled then
+            timerFrame:SetAlpha(oocAlpha)
+        end
+        -- Hide delay text when leaving combat
+        if delayText then delayText:Hide() end
+        lastDelay = 0
+        expectedShotTime = 0
     end
 end
 
@@ -289,6 +395,27 @@ function AutoShot:OnUpdate(elapsed)
     timerBar:SetMinMaxValues(0, shotSpeed)
     timerBar:SetValue(timeSinceShot)
     
+    -- Update clipping markers position and visibility
+    local showMarkers = db.showClippingMarkers
+    if showMarkers == nil then showMarkers = true end  -- Default to true
+    if showMarkers and safeMarker and queueMarker then
+        local barWidth = timerBar:GetWidth()
+        -- Position markers as percentage of bar width
+        local safePos = (safeEnd / shotSpeed) * barWidth
+        local queuePos = (queueStart / shotSpeed) * barWidth
+        
+        safeMarker:ClearAllPoints()
+        safeMarker:SetPoint("CENTER", timerBar, "LEFT", safePos, 0)
+        safeMarker:Show()
+        
+        queueMarker:ClearAllPoints()
+        queueMarker:SetPoint("CENTER", timerBar, "LEFT", queuePos, 0)
+        queueMarker:Show()
+    elseif safeMarker and queueMarker then
+        safeMarker:Hide()
+        queueMarker:Hide()
+    end
+    
     -- 3-Zone coloring based on TBC mechanics
     local safeLabel = db.safeText or ""
     local windupLabel = db.windupText or ""
@@ -306,6 +433,29 @@ function AutoShot:OnUpdate(elapsed)
         -- QUEUE NOW: Press your next shot to queue it
         timerBar:SetStatusBarColor(0.2, 0.6, 1.0, 1)  -- Blue
         timeText:SetText(queueLabel)
+    end
+    
+    -- Update GCD bar
+    local showGCD = db.showGCDBar
+    if showGCD == nil then showGCD = true end  -- Default to true
+    if gcdBar and showGCD then
+        if gcdStart > 0 and gcdDuration > 0 then
+            local gcdElapsed = GetTime() - gcdStart
+            local gcdRemaining = gcdDuration - gcdElapsed
+            if gcdRemaining > 0 then
+                gcdBar:SetMinMaxValues(0, gcdDuration)
+                gcdBar:SetValue(gcdElapsed)
+                gcdBar:Show()
+            else
+                gcdBar:Hide()
+                gcdStart = 0
+                gcdDuration = 0
+            end
+        else
+            gcdBar:Hide()
+        end
+    elseif gcdBar then
+        gcdBar:Hide()
     end
 end
 
