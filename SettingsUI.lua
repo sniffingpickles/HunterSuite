@@ -567,6 +567,12 @@ local function CreateAspectsContent(parent)
         if HunterSuite.Aspects then HunterSuite.Aspects:CheckAspect() end
     end)
     combatToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local dismissSlider = CreateSlider(content, "Dismiss Duration (seconds)", 10, 300, 10, HunterSuite.db.aspects.dismissDuration or 30, function(value)
+        HunterSuite.db.aspects.dismissDuration = value
+    end)
+    dismissSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
     y = y - 45
     
     -- Appearance header
@@ -964,7 +970,7 @@ function HunterSuite:CreateSettingsFrame()
     local version = titleBar:CreateFontString(nil, "OVERLAY")
     version:SetFont(STANDARD_TEXT_FONT, 10, "")
     version:SetPoint("LEFT", title, "RIGHT", 8, -2)
-    version:SetText("v2.0")
+    version:SetText("v3.0.4")
     version:SetTextColor(unpack(COLORS.textDim))
     
     -- Edit Mode button (in header)

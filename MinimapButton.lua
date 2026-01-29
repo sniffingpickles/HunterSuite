@@ -43,8 +43,8 @@ function HunterSuite:CreateMinimapButton()
     
     -- Border
     local border = minimapButton:CreateTexture(nil, "OVERLAY")
-    border:SetSize(54, 54)
-    border:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", -8, 8)
+    border:SetSize(52, 52)
+    border:SetPoint("TOPLEFT", 0, 0)
     border:SetTexture([[Interface\Minimap\MiniMap-TrackingBorder]])
     
     -- Highlight
@@ -54,13 +54,20 @@ function HunterSuite:CreateMinimapButton()
     highlight:SetTexture([[Interface\Minimap\UI-Minimap-ZoomButton-Highlight]])
     highlight:SetBlendMode("ADD")
     
-    -- Position around minimap
+    -- Position around minimap edge
     local function UpdatePosition()
         local angle = math.rad(HunterSuite.db.minimap.position or 225)
-        local x = math.cos(angle) * 80
-        local y = math.sin(angle) * 80
+        local cos = math.cos(angle)
+        local sin = math.sin(angle)
+        local minimapShape = GetMinimapShape and GetMinimapShape() or "ROUND"
+        
+        local r = 80
+        if minimapShape == "SQUARE" then
+            r = r * 1.414
+        end
+        
         minimapButton:ClearAllPoints()
-        minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+        minimapButton:SetPoint("CENTER", Minimap, "CENTER", r * cos, r * sin)
     end
     
     -- Dragging
@@ -127,7 +134,7 @@ function HunterSuite:CreateMinimapButton()
         GameTooltip:AddLine("|cffaaaaaaLeft-click:|r Open settings", 0.8, 0.8, 0.8)
         GameTooltip:AddLine("|cffaaaaaaShift+click:|r Feed pet", 0.8, 0.8, 0.8)
         GameTooltip:AddLine("|cffaaaaaaRight-click:|r Lock/unlock bars", 0.8, 0.8, 0.8)
-        GameTooltip:AddLine("|cffaaaaaaDrag:|r Move button", 0.8, 0.8, 0.8)
+        GameTooltip:AddLine("|cffaaaaaaDrag:|r Move around minimap", 0.8, 0.8, 0.8)
         
         GameTooltip:Show()
     end)

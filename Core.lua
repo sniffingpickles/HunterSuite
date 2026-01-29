@@ -113,6 +113,7 @@ HunterSuite.defaults = {
         onlyInCombat = false,
         fontSize = 14,
         alertText = "NO ASPECT!",
+        dismissDuration = 30,  -- seconds to dismiss reminder
     },
     -- Growl reminder module
     growl = {
@@ -491,6 +492,9 @@ HunterSuite.frame:SetScript("OnEvent", function(self, event, arg1, ...)
             if HunterSuite.AutoMark and HunterSuite.AutoMark.Init then
                 HunterSuite.AutoMark:Init()
             end
+            
+            -- Create minimap button
+            HunterSuite:CreateMinimapButton()
             
             print("|cff00ff00Hunter Suite|r loaded! Type |cffaaaaaa/hs|r for settings.")
         end

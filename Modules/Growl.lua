@@ -100,7 +100,9 @@ function Growl:CreateAlert()
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Left-click to open Pet Spellbook", 0.7, 0.7, 0.7)
         GameTooltip:AddLine("Right-click to dismiss", 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("Drag to move", 0.7, 0.7, 0.7)
+        if HunterSuite.state.editMode then
+            GameTooltip:AddLine("Drag to move (edit mode)", 0.7, 0.7, 0.7)
+        end
         GameTooltip:Show()
     end)
     alertFrame:SetScript("OnLeave", function()

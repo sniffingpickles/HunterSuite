@@ -25,6 +25,7 @@ local alertText = nil
 local pulseAnim = nil
 local hasAspect = false
 local lastCheck = 0
+local dismissedUntil = 0
 
 -- Create the alert frame
 function Aspects:CreateAlert()
@@ -95,9 +96,8 @@ function Aspects:CreateAlert()
     alertFrame:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then
             self:Hide()
-            C_Timer.After(30, function()
-                Aspects:CheckAspect()
-            end)
+            local duration = HunterSuite.db.aspects.dismissDuration or 30
+            dismissedUntil = GetTime() + duration
         end
     end)
     
@@ -107,8 +107,12 @@ function Aspects:CreateAlert()
         GameTooltip:AddLine("Aspect Reminder", 1, 1, 1)
         GameTooltip:AddLine("You don't have an aspect active!", 1, 0.5, 0.5)
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Right-click to dismiss for 30s", 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("Drag to move", 0.7, 0.7, 0.7)
+        local duration = HunterSuite.db.aspects.dismissDuration or 30
+        local timeText = duration >= 60 and string.format("%dm", duration / 60) or string.format("%ds", duration)
+        GameTooltip:AddLine("Right-click to dismiss for " .. timeText, 0.7, 0.7, 0.7)
+        if HunterSuite.state.editMode then
+            GameTooltip:AddLine("Drag to move (edit mode)", 0.7, 0.7, 0.7)
+        end
         GameTooltip:Show()
     end)
     alertFrame:SetScript("OnLeave", function()
@@ -176,6 +180,12 @@ function Aspects:CheckAspect()
     -- Only alert in combat or when configured
     local inCombat = UnitAffectingCombat("player")
     if db.onlyInCombat and not inCombat then
+        alertFrame:Hide()
+        return
+    end
+    
+    -- Check if dismissed
+    if GetTime() < dismissedUntil then
         alertFrame:Hide()
         return
     end

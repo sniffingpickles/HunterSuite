@@ -1,8 +1,8 @@
-## Interface: 20504
+## Interface: 20505
 ## Title: |cff00ff00Hunter Suite|r
 ## Notes: Complete Hunter toolkit: Pet feeding, Auto Shot timer, Trap timer, Range/Dead Zone, Ammo warning, Sting tracking, and more!
 ## Author: Cascade
-## Version: 3.0.3
+## Version: 3.0.4
 ## SavedVariables: HunterSuiteDB
 ## X-Category: Hunter
 
@@ -22,4 +22,5 @@ Modules\Ammo.lua
 Modules\Stings.lua
 Modules\PetReminder.lua
 Modules\AutoMark.lua
+MinimapButton.lua
 SettingsUI.lua
