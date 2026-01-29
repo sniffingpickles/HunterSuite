@@ -139,7 +139,9 @@ function Growl:IsGrowlEnabled()
         if name then
             local spellName = isToken and _G[name] or name
             if spellName == "Growl" then
-                return autoCastEnabled
+                -- autoCastAllowed indicates if autocast is toggled ON
+                -- autoCastEnabled returns spell ID (truthy) even when off
+                return autoCastAllowed == true
             end
         end
     end

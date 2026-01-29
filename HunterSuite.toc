@@ -2,7 +2,7 @@
 ## Title: |cff00ff00Hunter Suite|r
 ## Notes: Complete Hunter toolkit: Pet feeding, Auto Shot timer, Trap timer, Range/Dead Zone, Ammo warning, Sting tracking, and more!
 ## Author: Cascade
-## Version: 3.0.2
+## Version: 3.0.3
 ## SavedVariables: HunterSuiteDB
 ## X-Category: Hunter
 
