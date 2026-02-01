@@ -101,6 +101,7 @@ HunterSuite.defaults = {
         waitText = "WAIT",      -- Text when timer overdue
         showClippingMarkers = true, -- Show visual tick marks for safe/danger zones
         showDelayTimer = true,      -- Show how much last shot was clipped
+        delayTextPosition = "BOTTOM", -- Position of delay text: TOP, TOPLEFT, TOPRIGHT, BOTTOM, BOTTOMLEFT, BOTTOMRIGHT
         showGCDBar = true,          -- Show GCD bar below autoshot bar
         oocAlpha = 0.3,             -- Out of combat alpha (0 to hide completely)
     },

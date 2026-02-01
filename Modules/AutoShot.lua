@@ -123,9 +123,11 @@ function AutoShot:CreateBar()
     -- Delay text (shows how much last shot was clipped)
     delayText = timerFrame:CreateFontString(nil, "OVERLAY")
     delayText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    delayText:SetPoint("TOP", timerFrame, "BOTTOM", 0, -2)
     delayText:SetTextColor(1, 0.3, 0.3, 1)  -- Red for delay
     delayText:Hide()
+    
+    -- Position delay text based on setting
+    AutoShot:UpdateDelayTextPosition()
     
     -- GCD bar (thin bar below main bar)
     gcdBar = CreateFrame("StatusBar", "HunterSuiteGCDBar", timerFrame)
@@ -457,6 +459,31 @@ function AutoShot:OnUpdate(elapsed)
     elseif gcdBar then
         gcdBar:Hide()
     end
+end
+
+-- Update delay text position based on setting
+function AutoShot:UpdateDelayTextPosition()
+    if not delayText or not timerFrame then return end
+    
+    local db = HunterSuite.db.autoShot
+    local position = db.delayTextPosition or "BOTTOM"
+    
+    delayText:ClearAllPoints()
+    
+    -- Map position setting to anchor points and offsets
+    local positionMap = {
+        TOP = { point = "BOTTOM", relPoint = "TOP", x = 0, y = 2 },
+        TOPLEFT = { point = "BOTTOMLEFT", relPoint = "TOPLEFT", x = 0, y = 2 },
+        TOPRIGHT = { point = "BOTTOMRIGHT", relPoint = "TOPRIGHT", x = 0, y = 2 },
+        BOTTOM = { point = "TOP", relPoint = "BOTTOM", x = 0, y = -2 },
+        BOTTOMLEFT = { point = "TOPLEFT", relPoint = "BOTTOMLEFT", x = 0, y = -2 },
+        BOTTOMRIGHT = { point = "TOPRIGHT", relPoint = "BOTTOMRIGHT", x = 0, y = -2 },
+        LEFT = { point = "RIGHT", relPoint = "LEFT", x = -4, y = 0 },
+        RIGHT = { point = "LEFT", relPoint = "RIGHT", x = 4, y = 0 },
+    }
+    
+    local pos = positionMap[position] or positionMap.BOTTOM
+    delayText:SetPoint(pos.point, timerFrame, pos.relPoint, pos.x, pos.y)
 end
 
 -- Update visibility and appearance

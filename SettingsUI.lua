@@ -329,6 +329,131 @@ local function CreateTextInput(parent, label, initialValue, width, onChange)
     return container
 end
 
+-- Helper: Create a dropdown selector
+local function CreateDropdown(parent, label, options, initialValue, onChange)
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetSize(260, 40)
+    
+    -- Label
+    local text = container:CreateFontString(nil, "OVERLAY")
+    text:SetFont(STANDARD_TEXT_FONT, 12, "")
+    text:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
+    text:SetText(label)
+    text:SetTextColor(unpack(COLORS.text))
+    
+    -- Dropdown button background
+    local dropBg = CreateFrame("Frame", nil, container, "BackdropTemplate")
+    dropBg:SetSize(140, 22)
+    dropBg:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
+    dropBg:SetBackdrop({
+        bgFile = [[Interface\Buttons\WHITE8X8]],
+        edgeFile = [[Interface\Buttons\WHITE8X8]],
+        edgeSize = 1,
+    })
+    dropBg:SetBackdropColor(0.1, 0.1, 0.12, 1)
+    dropBg:SetBackdropBorderColor(unpack(COLORS.border))
+    
+    -- Current value text
+    local valueText = dropBg:CreateFontString(nil, "OVERLAY")
+    valueText:SetFont(STANDARD_TEXT_FONT, 11, "")
+    valueText:SetPoint("LEFT", dropBg, "LEFT", 8, 0)
+    valueText:SetTextColor(1, 1, 1, 1)
+    
+    -- Arrow indicator
+    local arrow = dropBg:CreateFontString(nil, "OVERLAY")
+    arrow:SetFont(STANDARD_TEXT_FONT, 10, "")
+    arrow:SetPoint("RIGHT", dropBg, "RIGHT", -6, 0)
+    arrow:SetText("v")
+    arrow:SetTextColor(unpack(COLORS.textDim))
+    
+    -- Find display text for initial value
+    local currentValue = initialValue
+    for _, opt in ipairs(options) do
+        if opt.value == initialValue then
+            valueText:SetText(opt.label)
+            break
+        end
+    end
+    
+    -- Click handler
+    dropBg:EnableMouse(true)
+    dropBg:SetScript("OnMouseUp", function(self)
+        -- Toggle dropdown menu
+        if container.menu and container.menu:IsShown() then
+            container.menu:Hide()
+            return
+        end
+        
+        -- Create menu if needed
+        if not container.menu then
+            local menu = CreateFrame("Frame", nil, dropBg, "BackdropTemplate")
+            menu:SetFrameStrata("DIALOG")
+            menu:SetBackdrop({
+                bgFile = [[Interface\Buttons\WHITE8X8]],
+                edgeFile = [[Interface\Buttons\WHITE8X8]],
+                edgeSize = 1,
+            })
+            menu:SetBackdropColor(0.12, 0.12, 0.15, 0.98)
+            menu:SetBackdropBorderColor(unpack(COLORS.border))
+            menu:SetPoint("TOP", dropBg, "BOTTOM", 0, -2)
+            menu:SetSize(140, #options * 20 + 4)
+            
+            for i, opt in ipairs(options) do
+                local item = CreateFrame("Frame", nil, menu)
+                item:SetSize(136, 18)
+                item:SetPoint("TOPLEFT", menu, "TOPLEFT", 2, -2 - (i-1) * 20)
+                item:EnableMouse(true)
+                
+                local itemText = item:CreateFontString(nil, "OVERLAY")
+                itemText:SetFont(STANDARD_TEXT_FONT, 11, "")
+                itemText:SetPoint("LEFT", item, "LEFT", 6, 0)
+                itemText:SetText(opt.label)
+                itemText:SetTextColor(1, 1, 1, 1)
+                
+                local itemBg = item:CreateTexture(nil, "BACKGROUND")
+                itemBg:SetAllPoints()
+                itemBg:SetTexture([[Interface\Buttons\WHITE8X8]])
+                itemBg:SetVertexColor(0, 0, 0, 0)
+                
+                item:SetScript("OnEnter", function()
+                    itemBg:SetVertexColor(unpack(COLORS.accent))
+                    itemBg:SetAlpha(0.3)
+                end)
+                item:SetScript("OnLeave", function()
+                    itemBg:SetVertexColor(0, 0, 0, 0)
+                end)
+                item:SetScript("OnMouseUp", function()
+                    currentValue = opt.value
+                    valueText:SetText(opt.label)
+                    menu:Hide()
+                    if onChange then onChange(opt.value) end
+                end)
+            end
+            
+            container.menu = menu
+        end
+        
+        container.menu:Show()
+    end)
+    
+    -- Hide menu when clicking elsewhere
+    dropBg:SetScript("OnHide", function()
+        if container.menu then container.menu:Hide() end
+    end)
+    
+    container.SetValue = function(self, value)
+        currentValue = value
+        for _, opt in ipairs(options) do
+            if opt.value == value then
+                valueText:SetText(opt.label)
+                break
+            end
+        end
+    end
+    
+    return container
+end
+
 -- Create tab content: Pet Feed
 local function CreatePetFeedContent(parent)
     local content = CreateFrame("Frame", nil, parent)
@@ -464,7 +589,26 @@ local function CreateAutoShotContent(parent)
         HunterSuite.db.autoShot.showDelayTimer = value
     end)
     delayToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
-    y = y - 35
+    y = y - 45
+    
+    -- Delay text position dropdown
+    local positionOptions = {
+        { value = "TOP", label = "Top" },
+        { value = "TOPLEFT", label = "Top Left" },
+        { value = "TOPRIGHT", label = "Top Right" },
+        { value = "BOTTOM", label = "Bottom" },
+        { value = "BOTTOMLEFT", label = "Bottom Left" },
+        { value = "BOTTOMRIGHT", label = "Bottom Right" },
+        { value = "LEFT", label = "Left" },
+        { value = "RIGHT", label = "Right" },
+    }
+    local delayPosDropdown = CreateDropdown(content, "Delay Text Position", positionOptions, 
+        HunterSuite.db.autoShot.delayTextPosition or "BOTTOM", function(value)
+            HunterSuite.db.autoShot.delayTextPosition = value
+            if HunterSuite.AutoShot then HunterSuite.AutoShot:UpdateDelayTextPosition() end
+        end)
+    delayPosDropdown:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 45
     
     local showGCD = HunterSuite.db.autoShot.showGCDBar
     if showGCD == nil then showGCD = true end
@@ -970,7 +1114,7 @@ function HunterSuite:CreateSettingsFrame()
     local version = titleBar:CreateFontString(nil, "OVERLAY")
     version:SetFont(STANDARD_TEXT_FONT, 10, "")
     version:SetPoint("LEFT", title, "RIGHT", 8, -2)
-    version:SetText("v3.0.4")
+    version:SetText("v3.0.5")
     version:SetTextColor(unpack(COLORS.textDim))
     
     -- Edit Mode button (in header)
@@ -1098,7 +1242,7 @@ function HunterSuite:CreateSettingsFrame()
     
     -- Scroll child (container for all tab contents)
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(contentArea:GetWidth() - 24, 700)  -- Height for all settings
+    scrollChild:SetSize(contentArea:GetWidth() - 24, 800)  -- Height for all settings
     scrollFrame:SetScrollChild(scrollChild)
     
     -- Enable mouse wheel scrolling
@@ -1181,7 +1325,7 @@ function HunterSuite:CreateSettingsFrame()
         
         -- Tab content (parent to scrollChild for scrolling)
         local content = contentCreators[i](scrollChild)
-        content:SetSize(scrollChild:GetWidth(), 600)
+        content:SetSize(scrollChild:GetWidth(), 750)
         content:Hide()
         tabContents[i] = content
     end
