@@ -13,6 +13,28 @@ local lastUpdate = 0
 
 local currentMinRange = nil
 local currentMaxRange = nil
+local maxRangedRange = 35  -- Base ranged attack range, adjusted by Hawk Eye talent
+local autoShotInRange = nil  -- Direct check: is Auto Shot usable on target?
+
+-- Hawk Eye talent: Survival tree, increases range by 2 yards per point (max 6 yards)
+local HAWK_EYE_TALENT_TAB = 3  -- Survival
+local HAWK_EYE_TALENT_INDEX = 3  -- 3rd talent in Survival tree
+local HAWK_EYE_RANGE_PER_POINT = 2
+local AUTO_SHOT_NAME = GetSpellInfo(75) or "Auto Shot"  -- Localized Auto Shot name
+
+-- Check for Hawk Eye talent and update max range
+local function UpdateMaxRange()
+    local baseRange = 35
+    local hawkEyeBonus = 0
+    
+    -- GetTalentInfo(tabIndex, talentIndex) returns: name, iconPath, tier, column, currentRank, maxRank, ...
+    local _, _, _, _, currentRank = GetTalentInfo(HAWK_EYE_TALENT_TAB, HAWK_EYE_TALENT_INDEX)
+    if currentRank and currentRank > 0 then
+        hawkEyeBonus = currentRank * HAWK_EYE_RANGE_PER_POINT
+    end
+    
+    maxRangedRange = baseRange + hawkEyeBonus
+end
 
 -- Create the range indicator
 function Range:CreateIndicator()
@@ -120,6 +142,11 @@ function Range:CheckRange()
     
     -- Get range from LibRangeCheck-3.0
     currentMinRange, currentMaxRange = rc:GetRange("target")
+    
+    -- Also check Auto Shot directly - this accounts for Hawk Eye automatically
+    local inRange = IsSpellInRange(AUTO_SHOT_NAME, "target")
+    autoShotInRange = (inRange == 1)
+    
     self:UpdateDisplay()
     rangeFrame:Show()
 end
@@ -142,16 +169,16 @@ function Range:UpdateDisplay()
         -- Dead zone (too close for ranged)
         r, g, b = 0.8, 0.2, 0.8  -- Purple
         text = "DEAD ZONE"
-    elseif currentMaxRange and currentMaxRange <= 35 then
-        -- In ranged attack range (good!)
+    elseif autoShotInRange then
+        -- Auto Shot says we're in range (most reliable, includes Hawk Eye)
         r, g, b = 0.2, 0.9, 0.2  -- Green
         if currentMinRange and currentMaxRange then
             text = string.format("%d - %d", currentMinRange, currentMaxRange)
         else
             text = "IN RANGE"
         end
-    elseif currentMinRange and currentMinRange >= 35 then
-        -- Too far
+    elseif autoShotInRange == false or (currentMinRange and currentMinRange >= maxRangedRange) then
+        -- Auto Shot says out of range, or LibRangeCheck says too far
         r, g, b = 0.9, 0.2, 0.2  -- Red
         text = "TOO FAR"
     else
@@ -220,4 +247,14 @@ end
 -- Initialize
 function Range:Init()
     self:CreateIndicator()
+    UpdateMaxRange()  -- Check Hawk Eye talent on init
+    
+    -- Re-check talents when they change (respec, etc.)
+    local talentFrame = CreateFrame("Frame")
+    talentFrame:RegisterEvent("CHARACTER_POINTS_CHANGED")
+    talentFrame:RegisterEvent("PLAYER_TALENT_UPDATE")
+    talentFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    talentFrame:SetScript("OnEvent", function()
+        UpdateMaxRange()
+    end)
 end
