@@ -191,6 +191,9 @@ function PetReminder:CreateReminder()
     eventFrame:RegisterEvent("UNIT_HEALTH")
     eventFrame:RegisterEvent("UNIT_AURA")
     eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+    eventFrame:RegisterEvent("PET_BAR_UPDATE")
+    eventFrame:RegisterEvent("PET_UI_UPDATE")
+    eventFrame:RegisterEvent("LOCALPLAYER_PET_RENAMED")
     eventFrame:SetScript("OnEvent", function(self, event, ...)
         PetReminder:OnEvent(event, ...)
     end)
@@ -220,7 +223,20 @@ end
 
 -- Handle events
 function PetReminder:OnEvent(event, ...)
-    if event == "UNIT_PET" or event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+    local arg1 = ...
+    
+    if event == "UNIT_PET" then
+        if arg1 == "player" then
+            -- Immediate check
+            self:CheckPet()
+            -- Delayed re-check for taming (pet state may take a moment to stabilize)
+            C_Timer.After(0.5, function()
+                self:CheckPet()
+            end)
+        end
+        
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" 
+           or event == "PET_BAR_UPDATE" or event == "PET_UI_UPDATE" or event == "LOCALPLAYER_PET_RENAMED" then
         self:CheckPet()
         
     elseif event == "UNIT_HEALTH" then
@@ -260,6 +276,14 @@ function PetReminder:CheckPet()
     if UnitExists("pet") then
         reminderFrame:Hide()
         self:CheckPetHealth()
+        return
+    end
+    
+    -- Double-check with HasPetUI for hunters (more reliable after taming)
+    local hasUI, isHunterPet = HasPetUI()
+    if hasUI and isHunterPet then
+        -- Pet exists according to HasPetUI, hide the reminder
+        reminderFrame:Hide()
         return
     end
     
