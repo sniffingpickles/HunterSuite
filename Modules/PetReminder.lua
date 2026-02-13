@@ -359,4 +359,5 @@ end
 -- Initialize
 function PetReminder:Init()
     self:CreateReminder()
+    self:UpdateUI()
 end

@@ -232,4 +232,5 @@ end
 -- Initialize
 function Ammo:Init()
     self:CreateWarning()
+    self:UpdateUI()
 end

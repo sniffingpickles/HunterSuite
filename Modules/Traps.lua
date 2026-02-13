@@ -261,4 +261,5 @@ end
 -- Initialize
 function Traps:Init()
     self:CreateBar()
+    self:UpdateUI()
 end

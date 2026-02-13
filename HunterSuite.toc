@@ -22,5 +22,6 @@ Modules\Ammo.lua
 Modules\Stings.lua
 Modules\PetReminder.lua
 Modules\AutoMark.lua
+Modules\WeavingBar.lua
 MinimapButton.lua
 SettingsUI.lua

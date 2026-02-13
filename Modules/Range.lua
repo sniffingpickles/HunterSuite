@@ -248,6 +248,7 @@ end
 function Range:Init()
     self:CreateIndicator()
     UpdateMaxRange()  -- Check Hawk Eye talent on init
+    self:UpdateUI()
     
     -- Re-check talents when they change (respec, etc.)
     local talentFrame = CreateFrame("Frame")

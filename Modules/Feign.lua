@@ -155,6 +155,7 @@ end
 -- Initialize
 function Feign:Init()
     self:CreateButton()
+    self:UpdateUI()
 end
 
 -- Keybinding support

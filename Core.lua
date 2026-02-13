@@ -205,6 +205,25 @@ HunterSuite.defaults = {
         onlyInPVPInstances = true,
         throttleSeconds = 10,
     },
+    -- Weaving Bar rotation guide
+    weavingBar = {
+        enabled = true,
+        locked = false,
+        scale = 1.0,
+        alpha = 1.0,
+        position = { point = "CENTER", x = 0, y = -160 },
+        barWidth = 400,
+        barHeight = 36,
+        timeWindow = 10,        -- Seconds visible on bar
+        enableWeaving = false,  -- Melee weaving off by default
+        weaveTime = 0.3,        -- Estimated weave time (0.2-0.4s)
+        hideWhenInactive = true,
+        oocAlpha = 0.3,         -- Out of combat alpha
+        showClippingWarning = true,
+        showRotationAlert = true,
+        showHasteIcons = true,
+        showKillCommand = true,
+    },
 }
 
 -- State
@@ -493,6 +512,9 @@ HunterSuite.frame:SetScript("OnEvent", function(self, event, arg1, ...)
             if HunterSuite.AutoMark and HunterSuite.AutoMark.Init then
                 HunterSuite.AutoMark:Init()
             end
+            if HunterSuite.WeavingBar and HunterSuite.WeavingBar.Init then
+                HunterSuite.WeavingBar:Init()
+            end
             
             -- Create minimap button
             HunterSuite:CreateMinimapButton()
@@ -671,6 +693,10 @@ function HunterSuite:EnterEditMode()
         self.PetReminder.mendFrame:Show()
         self.PetReminder.mendFrame:SetAlpha(1)
     end
+    if self.WeavingBar and self.WeavingBar.mainFrame then
+        self.WeavingBar.mainFrame:Show()
+        self.WeavingBar.mainFrame:SetAlpha(1)
+    end
     
     -- Show overlay
     CreateEditModeOverlay()
@@ -739,6 +765,178 @@ function HunterSuite:FireEditModeCallbacks()
     for _, callback in ipairs(self.editModeCallbacks) do
         callback(self.state.editMode)
     end
+end
+
+-- Copyable text popup for dumping data
+local dumpFrame = nil
+function HunterSuite:ShowCopyableText(title, text)
+    if not dumpFrame then
+        dumpFrame = CreateFrame("Frame", "HunterSuiteDumpFrame", UIParent, "BackdropTemplate")
+        dumpFrame:SetSize(500, 400)
+        dumpFrame:SetPoint("CENTER")
+        dumpFrame:SetFrameStrata("DIALOG")
+        dumpFrame:SetMovable(true)
+        dumpFrame:EnableMouse(true)
+        dumpFrame:RegisterForDrag("LeftButton")
+        dumpFrame:SetScript("OnDragStart", dumpFrame.StartMoving)
+        dumpFrame:SetScript("OnDragStop", dumpFrame.StopMovingOrSizing)
+        dumpFrame:SetClampedToScreen(true)
+        dumpFrame:SetBackdrop({
+            bgFile = [[Interface\Buttons\WHITE8X8]],
+            edgeFile = [[Interface\Buttons\WHITE8X8]],
+            tile = false, edgeSize = 1,
+            insets = { left = 1, right = 1, top = 1, bottom = 1 }
+        })
+        dumpFrame:SetBackdropColor(0.05, 0.05, 0.07, 0.95)
+        dumpFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+
+        -- Title
+        dumpFrame.title = dumpFrame:CreateFontString(nil, "OVERLAY")
+        dumpFrame.title:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
+        dumpFrame.title:SetPoint("TOPLEFT", dumpFrame, "TOPLEFT", 10, -8)
+        dumpFrame.title:SetTextColor(0.4, 1.0, 0.4, 1)
+
+        -- Close button
+        local closeBtn = CreateFrame("Button", nil, dumpFrame)
+        closeBtn:SetSize(20, 20)
+        closeBtn:SetPoint("TOPRIGHT", dumpFrame, "TOPRIGHT", -4, -4)
+        closeBtn:SetNormalFontObject(GameFontNormalSmall)
+        local closeTxt = closeBtn:CreateFontString(nil, "OVERLAY")
+        closeTxt:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
+        closeTxt:SetPoint("CENTER")
+        closeTxt:SetText("X")
+        closeTxt:SetTextColor(1, 0.3, 0.3, 1)
+        closeBtn:SetScript("OnClick", function() dumpFrame:Hide() end)
+
+        -- Scroll frame
+        local scrollFrame = CreateFrame("ScrollFrame", "HunterSuiteDumpScroll", dumpFrame, "UIPanelScrollFrameTemplate")
+        scrollFrame:SetPoint("TOPLEFT", dumpFrame, "TOPLEFT", 8, -28)
+        scrollFrame:SetPoint("BOTTOMRIGHT", dumpFrame, "BOTTOMRIGHT", -28, 8)
+
+        -- EditBox (copyable)
+        local editBox = CreateFrame("EditBox", "HunterSuiteDumpEditBox", scrollFrame)
+        editBox:SetMultiLine(true)
+        editBox:SetAutoFocus(false)
+        editBox:SetFontObject(GameFontHighlightSmall)
+        editBox:SetFont(STANDARD_TEXT_FONT, 11, "")
+        editBox:SetWidth(scrollFrame:GetWidth() or 460)
+        editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        scrollFrame:SetScrollChild(editBox)
+        dumpFrame.editBox = editBox
+
+        -- Select all on focus
+        editBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+
+        -- Update editbox width when scroll frame resizes
+        scrollFrame:SetScript("OnSizeChanged", function(self, w)
+            editBox:SetWidth(w)
+        end)
+    end
+
+    dumpFrame.title:SetText(title)
+    dumpFrame.editBox:SetText(text)
+    dumpFrame.editBox:SetCursorPosition(0)
+    dumpFrame:Show()
+    dumpFrame.editBox:SetFocus()
+    dumpFrame.editBox:HighlightText()
+end
+
+-- Dump ALL food items from bags into a copyable window
+function HunterSuite:DumpAllFood()
+    local lines = {}
+    table.insert(lines, "=== HunterSuite Food Dump ===")
+    table.insert(lines, "Date: " .. date("%Y-%m-%d %H:%M:%S"))
+    
+    -- Pet diet info
+    local petFamily = UnitCreatureFamily("pet") or "none"
+    table.insert(lines, "Pet Family: " .. petFamily)
+    self:UpdatePetState()
+    local diet = self.state.petDiet or {}
+    table.insert(lines, "Pet Diet: " .. (#diet > 0 and table.concat(diet, ", ") or "none"))
+    table.insert(lines, "")
+    
+    -- Scan ALL bag items
+    local recognized = {}
+    local unrecognized = {}
+    local nonFood = {}
+    local seen = {}  -- Deduplicate by itemID
+    
+    for bag = 0, 4 do
+        local numSlots = C_Container and C_Container.GetContainerNumSlots(bag) or GetContainerNumSlots(bag)
+        for slot = 1, numSlots do
+            local itemInfo
+            if C_Container and C_Container.GetContainerItemInfo then
+                itemInfo = C_Container.GetContainerItemInfo(bag, slot)
+            else
+                local texture, itemCount, locked, quality, readable, lootable, itemLink = GetContainerItemInfo(bag, slot)
+                if texture then
+                    itemInfo = { stackCount = itemCount }
+                    if itemLink then itemInfo.itemID = GetItemInfoInstant(itemLink) end
+                end
+            end
+            
+            if itemInfo and itemInfo.itemID and not seen[itemInfo.itemID] then
+                seen[itemInfo.itemID] = true
+                local itemID = itemInfo.itemID
+                local itemName, _, itemQuality, itemLevel, _, itemType, itemSubType = GetItemInfo(itemID)
+                itemName = itemName or ("Unknown #" .. itemID)
+                local count = GetItemCount(itemID) or itemInfo.stackCount or 1
+                
+                local isConsumable = (itemType == "Consumable")
+                local isFoodDrink = (itemSubType == "Food & Drink" or itemSubType == "Consumable" or itemSubType == "Other")
+                
+                if isConsumable and isFoodDrink then
+                    local foodEntry = self.FoodDB and self.FoodDB[itemID]
+                    if foodEntry then
+                        table.insert(recognized, string.format(
+                            "[IN DB] ID:%d  \"%s\"  x%d  type=%s  dbLevel=%d  itemLevel=%s",
+                            itemID, itemName, count, foodEntry.type, foodEntry.level or 0, tostring(itemLevel or "?")))
+                    else
+                        table.insert(unrecognized, string.format(
+                            "[MISSING] ID:%d  \"%s\"  x%d  itemType=%s  itemSubType=%s  itemLevel=%s",
+                            itemID, itemName, count, tostring(itemType), tostring(itemSubType), tostring(itemLevel or "?")))
+                    end
+                elseif isConsumable then
+                    table.insert(nonFood, string.format(
+                        "[CONSUMABLE] ID:%d  \"%s\"  x%d  subType=%s  itemLevel=%s",
+                        itemID, itemName, count, tostring(itemSubType), tostring(itemLevel or "?")))
+                end
+            end
+        end
+    end
+    
+    -- Sort each section
+    table.sort(recognized)
+    table.sort(unrecognized)
+    table.sort(nonFood)
+    
+    table.insert(lines, "--- RECOGNIZED FOOD (in FoodDB): " .. #recognized .. " ---")
+    for _, line in ipairs(recognized) do
+        table.insert(lines, line)
+    end
+    
+    table.insert(lines, "")
+    table.insert(lines, "--- MISSING FROM FoodDB: " .. #unrecognized .. " ---")
+    if #unrecognized == 0 then
+        table.insert(lines, "(none)")
+    else
+        for _, line in ipairs(unrecognized) do
+            table.insert(lines, line)
+        end
+    end
+    
+    table.insert(lines, "")
+    table.insert(lines, "--- OTHER CONSUMABLES (non-food): " .. #nonFood .. " ---")
+    for _, line in ipairs(nonFood) do
+        table.insert(lines, line)
+    end
+    
+    table.insert(lines, "")
+    table.insert(lines, "=== END DUMP ===")
+    
+    local fullText = table.concat(lines, "\n")
+    self:ShowCopyableText("HunterSuite - Food Dump (Ctrl+A, Ctrl+C to copy)", fullText)
+    print("|cff00ff00Hunter Suite|r Food dump ready - " .. #recognized .. " recognized, " .. #unrecognized .. " missing. Copy from the popup window.")
 end
 
 -- Slash commands
@@ -828,6 +1026,8 @@ SlashCmdList["HUNTERSUITE"] = function(msg)
             print("  No recognized pet food found!")
             print("  |cffaaaaaaYour pet eats: " .. table.concat(HunterSuite.state.petDiet or {}, ", ") .. "|r")
         end
+    elseif msg == "dumpfood" then
+        HunterSuite:DumpAllFood()
     else
         if HunterSuite.ShowSettings then
             HunterSuite:ShowSettings()
@@ -837,6 +1037,7 @@ SlashCmdList["HUNTERSUITE"] = function(msg)
             print("  |cffaaaaaa/hs edit|r - Toggle edit mode (show/move all elements)")
             print("  |cffaaaaaa/hs lock|r - Lock/unlock all bars")
             print("  |cffaaaaaa/hs feed|r - Feed pet now")
+            print("  |cffaaaaaa/hs dumpfood|r - Dump all food items to copyable window")
             print("  |cffaaaaaa/hs reset|r - Reset to defaults")
         end
     end

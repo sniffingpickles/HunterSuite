@@ -199,4 +199,5 @@ end
 -- Initialize
 function Tracking:Init()
     self:CreateReminder()
+    self:UpdateUI()
 end

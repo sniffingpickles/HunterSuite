@@ -215,6 +215,7 @@ end
 -- Initialize
 function Growl:Init()
     self:CreateAlert()
+    self:UpdateUI()
     
     -- Delay initial check
     C_Timer.After(2, function()

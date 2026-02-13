@@ -518,4 +518,5 @@ end
 function AutoShot:Init()
     self:CreateBar()
     self:UpdateShotSpeed()
+    self:UpdateUI()
 end

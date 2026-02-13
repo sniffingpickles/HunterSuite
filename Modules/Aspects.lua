@@ -215,5 +215,6 @@ end
 -- Initialize
 function Aspects:Init()
     self:CreateAlert()
+    self:UpdateUI()
     self:CheckAspect()
 end

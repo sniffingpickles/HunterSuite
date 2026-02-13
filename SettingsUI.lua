@@ -33,6 +33,7 @@ local TABS = {
     { id = "aspect", name = "Aspects", icon = [[Interface\Icons\Spell_Nature_RavenForm]] },
     { id = "growl", name = "Growl", icon = [[Interface\Icons\Ability_Physical_Taunt]] },
     { id = "combat", name = "Combat", icon = [[Interface\Icons\Ability_Hunter_SniperShot]] },
+    { id = "weaving", name = "Weaving", icon = [[Interface\Icons\Ability_Hunter_ImprovedSteadyShot]] },
     { id = "utility", name = "Utility", icon = [[Interface\Icons\INV_Misc_Bag_10]] },
     { id = "general", name = "General", icon = [[Interface\Icons\INV_Misc_Gear_01]] },
 }
@@ -865,6 +866,137 @@ local function CreateCombatContent(parent)
     return content
 end
 
+-- Create tab content: Weaving Bar
+local function CreateWeavingBarContent(parent)
+    local content = CreateFrame("Frame", nil, parent)
+    content:SetAllPoints()
+    
+    local y = -20
+    
+    local header = CreateHeader(content, "WEAVING BAR")
+    header:SetPoint("TOPLEFT", content, "TOPLEFT", 10, y)
+    y = y - 25
+    
+    -- Beta notice
+    local betaNote = content:CreateFontString(nil, "OVERLAY")
+    betaNote:SetFont(STANDARD_TEXT_FONT, 9, "")
+    betaNote:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    betaNote:SetWidth(240)
+    betaNote:SetJustifyH("LEFT")
+    betaNote:SetText("|cffff9900BETA:|r |cffbbbbbbThis module is experimental. Rotation timings and UI may not be perfect yet. Report issues on Discord!|r")
+    y = y - 35
+    
+    local enableToggle = CreateToggle(content, "Enable Weaving Bar", HunterSuite.db.weavingBar.enabled, function(value)
+        HunterSuite.db.weavingBar.enabled = value
+        if HunterSuite.WeavingBar then HunterSuite.WeavingBar:UpdateUI() end
+    end)
+    enableToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local hideToggle = CreateToggle(content, "Hide When Not Shooting", HunterSuite.db.weavingBar.hideWhenInactive, function(value)
+        HunterSuite.db.weavingBar.hideWhenInactive = value
+    end)
+    hideToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 45
+    
+    -- Melee Weaving section
+    local weaveHeader = CreateHeader(content, "MELEE WEAVING")
+    weaveHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 10, y)
+    y = y - 30
+    
+    local weaveToggle = CreateToggle(content, "Enable Melee Weaving", HunterSuite.db.weavingBar.enableWeaving, function(value)
+        HunterSuite.db.weavingBar.enableWeaving = value
+        if HunterSuite.WeavingBar then
+            HunterSuite.WeavingBar:UpdateHaste()
+            HunterSuite.WeavingBar:SelectRotation()
+        end
+    end)
+    weaveToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local weaveTimeSlider = CreateSlider(content, "Weave Time (sec)", 0.2, 0.5, 0.05, HunterSuite.db.weavingBar.weaveTime, function(value)
+        HunterSuite.db.weavingBar.weaveTime = value
+    end)
+    weaveTimeSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    -- Display section
+    local displayHeader = CreateHeader(content, "DISPLAY")
+    displayHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 10, y)
+    y = y - 30
+    
+    local scaleSlider = CreateSlider(content, "Scale", 0.5, 2.0, 0.1, HunterSuite.db.weavingBar.scale, function(value)
+        HunterSuite.db.weavingBar.scale = value
+        if HunterSuite.WeavingBar then HunterSuite.WeavingBar:UpdateUI() end
+    end)
+    scaleSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local widthSlider = CreateSlider(content, "Bar Width", 200, 600, 20, HunterSuite.db.weavingBar.barWidth, function(value)
+        HunterSuite.db.weavingBar.barWidth = value
+        if HunterSuite.WeavingBar then HunterSuite.WeavingBar:UpdateUI() end
+    end)
+    widthSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local heightSlider = CreateSlider(content, "Bar Height", 20, 60, 2, HunterSuite.db.weavingBar.barHeight, function(value)
+        HunterSuite.db.weavingBar.barHeight = value
+        if HunterSuite.WeavingBar then HunterSuite.WeavingBar:UpdateUI() end
+    end)
+    heightSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local timeSlider = CreateSlider(content, "Time Window (sec)", 5, 20, 1, HunterSuite.db.weavingBar.timeWindow, function(value)
+        HunterSuite.db.weavingBar.timeWindow = value
+    end)
+    timeSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local alphaSlider = CreateSlider(content, "Alpha", 0.1, 1.0, 0.1, HunterSuite.db.weavingBar.alpha, function(value)
+        HunterSuite.db.weavingBar.alpha = value
+        if HunterSuite.WeavingBar then HunterSuite.WeavingBar:UpdateUI() end
+    end)
+    alphaSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 50
+    
+    local oocSlider = CreateSlider(content, "Out of Combat Alpha", 0, 1.0, 0.1, HunterSuite.db.weavingBar.oocAlpha, function(value)
+        HunterSuite.db.weavingBar.oocAlpha = value
+    end)
+    oocSlider:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 55
+    
+    -- Indicators section
+    local indHeader = CreateHeader(content, "INDICATORS")
+    indHeader:SetPoint("TOPLEFT", content, "TOPLEFT", 10, y)
+    y = y - 30
+    
+    local clipToggle = CreateToggle(content, "Show Clipping Warning", HunterSuite.db.weavingBar.showClippingWarning, function(value)
+        HunterSuite.db.weavingBar.showClippingWarning = value
+    end)
+    clipToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local alertToggle = CreateToggle(content, "Show Rotation Change Alert", HunterSuite.db.weavingBar.showRotationAlert, function(value)
+        HunterSuite.db.weavingBar.showRotationAlert = value
+    end)
+    alertToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local hasteToggle = CreateToggle(content, "Show Haste Buff Icons", HunterSuite.db.weavingBar.showHasteIcons, function(value)
+        HunterSuite.db.weavingBar.showHasteIcons = value
+    end)
+    hasteToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 35
+    
+    local kcToggle = CreateToggle(content, "Show Kill Command CD", HunterSuite.db.weavingBar.showKillCommand, function(value)
+        HunterSuite.db.weavingBar.showKillCommand = value
+    end)
+    kcToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 20, y)
+    y = y - 40
+    
+    return content
+end
+
 -- Create tab content: Utility (Ammo, Pet Reminder, Tracking, AutoMark)
 local function CreateUtilityContent(parent)
     local content = CreateFrame("Frame", nil, parent)
@@ -1242,7 +1374,7 @@ function HunterSuite:CreateSettingsFrame()
     
     -- Scroll child (container for all tab contents)
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(contentArea:GetWidth() - 24, 800)  -- Height for all settings
+    scrollChild:SetSize(contentArea:GetWidth() - 24, 900)  -- Height for all settings
     scrollFrame:SetScrollChild(scrollChild)
     
     -- Enable mouse wheel scrolling
@@ -1276,6 +1408,7 @@ function HunterSuite:CreateSettingsFrame()
         CreateAspectsContent,
         CreateGrowlContent,
         CreateCombatContent,
+        CreateWeavingBarContent,
         CreateUtilityContent,
         CreateGeneralContent,
     }
@@ -1325,7 +1458,7 @@ function HunterSuite:CreateSettingsFrame()
         
         -- Tab content (parent to scrollChild for scrolling)
         local content = contentCreators[i](scrollChild)
-        content:SetSize(scrollChild:GetWidth(), 750)
+        content:SetSize(scrollChild:GetWidth(), 850)
         content:Hide()
         tabContents[i] = content
     end
