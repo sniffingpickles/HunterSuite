@@ -1211,8 +1211,8 @@ function WeavingBar:Init()
         WeavingBar:OnEvent(event, ...)
     end)
     
-    -- OnUpdate for rendering
-    mainFrame:SetScript("OnUpdate", function(self, elapsed)
+    -- OnUpdate on eventFrame (not mainFrame) so it fires even when mainFrame is hidden
+    eventFrame:SetScript("OnUpdate", function(self, elapsed)
         WeavingBar:OnUpdate(elapsed)
     end)
     
