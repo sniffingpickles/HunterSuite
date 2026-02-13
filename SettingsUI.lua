@@ -1246,7 +1246,7 @@ function HunterSuite:CreateSettingsFrame()
     local version = titleBar:CreateFontString(nil, "OVERLAY")
     version:SetFont(STANDARD_TEXT_FONT, 10, "")
     version:SetPoint("LEFT", title, "RIGHT", 8, -2)
-    version:SetText("v3.0.7")
+    version:SetText("v3.1.0")
     version:SetTextColor(unpack(COLORS.textDim))
     
     -- Edit Mode button (in header)
