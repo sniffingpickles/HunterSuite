@@ -138,7 +138,7 @@ O.pages = {
     },
     {
         key = "combat", title = "Traps & Stings", icon = 135834,
-        desc = "Timers for traps you placed and stings on enemy nameplates.",
+        desc = "Timers for traps you placed and stings on your target.",
         sections = {
             {
                 title = "Trap timers", module = "traps", icon = 135834,
@@ -150,9 +150,15 @@ O.pages = {
             {
                 title = "Sting timers", module = "stings", icon = 132204,
                 items = {
-                    { type = "slider", path = "stings.size", label = "Icon size", min = 14, max = 40, step = 1, format = plain },
+                    { type = "segmented", path = "stings.display", label = "Show timers",
+                      values = { { "bar", "Bar" }, { "plates", "Nameplates" }, { "both", "Both" } },
+                      desc = "The bar shows your target's stings. Place it anywhere in edit mode (/hs edit)." },
+                    { type = "toggle", path = "stings.attach", label = "Dock the bar under the Auto Shot bar",
+                      desc = "It follows the Auto Shot bar and matches its width." },
+                    { type = "slider", path = "stings.barWidth", label = "Bar width", min = 120, max = 360, step = 10, format = plain },
+                    { type = "slider", path = "stings.size", label = "Nameplate icon size", min = 14, max = 40, step = 1, format = plain },
                     { type = "slider", path = "stings.offsetY", label = "Height above nameplate", min = -10, max = 40, step = 1, format = plain },
-                    { type = "toggle", path = "stings.showText", label = "Countdown text" },
+                    { type = "toggle", path = "stings.showText", label = "Countdown on nameplate icons" },
                     { type = "toggle", path = "stings.showMark", label = "Include Hunter's Mark" },
                     { type = "info", text = "In combat Forever hides aura data from addons, so timers start from your casts." },
                 },
@@ -228,7 +234,7 @@ O.moduleBlurbs = {
     tracking = { icon = 135942, text = "Track Humanoids in battlegrounds" },
     ammo = { icon = 132382, text = "Counter and low-ammo warning" },
     traps = { icon = 135834, text = "Arming and lifetime timers" },
-    stings = { icon = 132204, text = "Sting countdowns on nameplates" },
+    stings = { icon = 132204, text = "Sting countdowns for your target" },
     autoMark = { icon = 137008, text = "Skull enemy pets in PvP", notOnForever = true },
     weavingBar = { icon = 132213, text = "Steady Shot rotation guide", notOnForever = true },
 }

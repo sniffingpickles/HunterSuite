@@ -1,13 +1,12 @@
-# HunterSuite 4.1.0
+# HunterSuite 4.2.0
 
-A range fix for Forever, and better feeding on Burning Crusade Anniversary.
-
-### Fixed
-- **Range pill:** no longer shows Melee when you're at range.
-- **Auto Shot bar:** "Out of range" now works with the range pill turned off.
-- **Pet card (Burning Crusade Anniversary):** the old food list had swapped items, wrong food types, guessed levels and Wrath foods that don't exist in TBC.
+Sting timers you can put anywhere. Thanks to Imppen for the idea.
 
 ### New
-- **Pet card:** if your pet refuses a food ("doesn't like that food" or "level is not high enough"), the card moves on to the next food in your bags.
-- **Burning Crusade Anniversary:** every pet food in the game, 443 in all, taken from Blizzard's own data with the real food type and level. Raw meat and raw fish count as their own diets, and diet names work in every client language.
-- **Burning Crusade Anniversary 2.5.6** is listed as supported, so the addon no longer shows as out of date there.
+- **Sting bar:** your target's stings and Hunter's Mark on a bar you can place anywhere in edit mode (`/hs edit`), for example under your cast bar. A row turns red in its last 3 seconds, and the bar follows your target and hides when there's nothing on it.
+- **Dock under the Auto Shot bar:** one switch puts the sting bar right under your swing timer, at the same width.
+- **Show timers:** pick the bar, nameplates or both, under Traps & Stings.
+
+### Fixed
+- **Sting timers:** now work with nameplates turned off.
+- **Sting timers:** a new sting replaces the old one on that target instead of leaving its timer running.

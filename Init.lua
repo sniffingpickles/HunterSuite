@@ -12,7 +12,7 @@ HS.title = "HunterSuite"
 HS.state = { editMode = false }
 
 local GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-HS.version = GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version") or "4.1.0"
+HS.version = GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version") or "4.2.0"
 
 -- Client detection. WoW Forever (game type "camelot") is the 12.x engine with
 -- vanilla content and reports a 1.60+ toc, so the interface number is the one
@@ -192,10 +192,14 @@ HS.defaults = {
     },
     stings = {
         enabled = true,
-        size = 22,
+        display = "both",       -- bar | plates | both
+        attach = false,         -- dock the bar under the Auto Shot bar
+        barWidth = 200,
+        size = 22,              -- nameplate icons
         showMark = true,
         showText = true,
         offsetY = 6,
+        position = { point = "CENTER", x = 250, y = -250 },
     },
     autoMark = {
         enabled = false,
