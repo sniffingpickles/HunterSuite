@@ -7,9 +7,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Stings = HS:NewModule("stings", { title = "Sting Timers" })
+local Stings = HS:NewModule("stings", { title = L.STING_TIMERS_2 })
 
 local ROW_H, ROW_GAP, MAX_ROWS = 18, 4, 4
 local DOCK_GAP = 14       -- clears the Auto Shot bar's GCD line and delay text
@@ -275,7 +276,7 @@ end
 ---------------------------------------------------------------------------
 
 function Stings:BuildBar()
-    local f = UI:Element("HunterSuiteStings", self.db, "Stings")
+    local f = UI:Element("HunterSuiteStings", self.db, L.STINGS)
     f:SetSize(self.db.barWidth or 200, ROW_H)
     f.rows = {}
     for i = 1, MAX_ROWS do
@@ -298,7 +299,7 @@ function Stings:BuildBar()
     f:SetScript("OnUpdate", function() Stings:Draw() end)
     f:Hide()
     self.bar = f
-    HS.Movers:Register(f, { label = "Stings", defaultPath = "stings.position", module = "stings",
+    HS.Movers:Register(f, { label = L.STINGS, defaultPath = "stings.position", module = "stings",
         hidden = function() return Stings.docked or Stings.db.display == "plates" end })
 end
 
@@ -333,10 +334,10 @@ end
 
 local function Sample(now)
     local list = {
-        { name = S.Name(S.STINGS[1].ids) or "Serpent Sting", icon = S.Icon(S.STINGS[1].ids) or 132204, expires = now + 2.4, duration = 15 },
+        { name = S.Name(S.STINGS[1].ids) or L.SERPENT_STING, icon = S.Icon(S.STINGS[1].ids) or 132204, expires = now + 2.4, duration = 15 },
     }
     if Stings.db.showMark then
-        list[2] = { name = S.Name(S.HUNTERS_MARK) or "Hunter's Mark", icon = S.Icon(S.HUNTERS_MARK) or 132212, expires = now + 84, duration = 120 }
+        list[2] = { name = S.Name(S.HUNTERS_MARK) or L.HUNTERS_MARK, icon = S.Icon(S.HUNTERS_MARK) or 132212, expires = now + 84, duration = 120 }
     end
     return list
 end
