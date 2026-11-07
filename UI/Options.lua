@@ -160,7 +160,9 @@ O.pages = {
                     { type = "slider", path = "stings.offsetY", label = "Height above nameplate", min = -10, max = 40, step = 1, format = plain },
                     { type = "toggle", path = "stings.showText", label = "Countdown on nameplate icons" },
                     { type = "toggle", path = "stings.showMark", label = "Include Hunter's Mark" },
-                    { type = "info", text = "In combat Forever hides aura data from addons, so timers start from your casts." },
+                    { type = "toggle", path = "stings.showConcussive", label = "Include Concussive Shot" },
+                    { type = "toggle", path = "stings.showWingClip", label = "Include Wing Clip" },
+                    { type = "info", text = "In combat Forever hides aura data from addons, so timers start from your casts, even one that misses." },
                 },
             },
             {

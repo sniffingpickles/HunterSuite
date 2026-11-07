@@ -56,6 +56,10 @@ S.STINGS = {
 }
 S.HUNTERS_MARK = { 1130, 14323, 14324, 14325 }
 S.HUNTERS_MARK_DURATION = 120
+-- Slows with a timer of their own. Unlike stings they stack with anything.
+S.CONCUSSIVE_SHOT = { 5116 }
+S.CONCUSSIVE_SHOT_DURATION = 4
+S.WING_CLIP_DURATION = 10
 
 S.TRACKING = {
     beasts = 1494, humanoids = 19883, undead = 19884, hidden = 19885,
@@ -74,6 +78,7 @@ local ENGLISH = {
     [13812] = "Explosive Trap Effect", [1978] = "Serpent Sting", [3043] = "Scorpid Sting",
     [3034] = "Viper Sting", [19386] = "Wyvern Sting", [1130] = "Hunter's Mark", [19883] = "Track Humanoids",
     [2973] = "Raptor Strike", [2974] = "Wing Clip", [3044] = "Arcane Shot", [34120] = "Steady Shot",
+    [5116] = "Concussive Shot",
 }
 
 local nameCache = {}

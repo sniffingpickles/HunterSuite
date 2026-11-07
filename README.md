@@ -40,7 +40,7 @@ All reminders share one tidy stack. Right-click one to dismiss it.
 ### Ammo, traps and stings
 - **Ammo counter** with low and critical warnings and "~N minutes of shooting left". Hidden for thrown weapons and wands.
 - **Trap timers:** arming, then the time left before each trap despawns.
-- **Sting timers:** Sting and Hunter's Mark countdowns for your target, on a bar you can place anywhere or dock under the Auto Shot bar, on enemy nameplates, or both.
+- **Sting timers:** Sting, Hunter's Mark, Concussive Shot and Wing Clip countdowns for your target, on a bar you can place anywhere or dock under the Auto Shot bar, on enemy nameplates, or both.
 
 ### Burning Crusade clients
 - **Weaving Bar:** a Steady Shot rotation guide based on diziet559's rotation tools.

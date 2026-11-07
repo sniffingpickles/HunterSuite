@@ -11,12 +11,14 @@ local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
 local Stings = HS:NewModule("stings", { title = "Sting Timers" })
 
-local ROW_H, ROW_GAP, MAX_ROWS = 18, 4, 3
+local ROW_H, ROW_GAP, MAX_ROWS = 18, 4, 4
 local DOCK_GAP = 14       -- clears the Auto Shot bar's GCD line and delay text
-local WARN_AT = 3         -- seconds left when a row turns red
+local WARN_AT = 3         -- seconds left when a row turns red (a quarter of short ones)
 
 local tracked = {}        -- spellID -> { key, duration, ids, name }
 local byName = {}         -- localized name -> entry
+local isSting = {}        -- key -> true for the stings, which replace each other
+for _, sting in ipairs(S.STINGS) do isSting[sting.key] = true end
 
 -- One record per enemy: { timers = { [key] = { expires, duration, icon, name } }, plate, guid }.
 -- Other units' GUIDs are secret in combat, so a record is found by its
@@ -30,7 +32,7 @@ local current
 local holders = {}        -- plate -> holder frame
 local pool = {}
 
-local function BuildLookups(showMark)
+local function BuildLookups(db)
     wipe(tracked)
     wipe(byName)
     local function add(key, ids, duration)
@@ -40,7 +42,9 @@ local function BuildLookups(showMark)
         if name then byName[name] = entry end
     end
     for _, sting in ipairs(S.STINGS) do add(sting.key, sting.ids, sting.duration) end
-    if showMark then add("mark", S.HUNTERS_MARK, S.HUNTERS_MARK_DURATION) end
+    if db.showMark then add("mark", S.HUNTERS_MARK, S.HUNTERS_MARK_DURATION) end
+    if db.showConcussive then add("concussive", S.CONCUSSIVE_SHOT, S.CONCUSSIVE_SHOT_DURATION) end
+    if db.showWingClip then add("wingClip", S.WING_CLIP, S.WING_CLIP_DURATION) end
 end
 
 local function Lookup(spellID, name)
@@ -240,10 +244,10 @@ function Stings:OnCast(spellID)
     local entry = Lookup(spellID, C.GetSpellName(spellID))
     if not entry or not UnitExists("target") then return end
     local rec = Ensure("target")
-    if entry.key ~= "mark" then
+    if isSting[entry.key] then
         -- One sting per hunter on a target: a new one replaces the last.
         for key in pairs(rec.timers) do
-            if key ~= "mark" then rec.timers[key] = nil end
+            if isSting[key] then rec.timers[key] = nil end
         end
     end
     local now = GetTime()
@@ -360,7 +364,7 @@ function Stings:Draw()
             row.name:SetText(t.name)
             row.bar:SetRange(0, t.duration)
             row.bar:SetValueNow(left)
-            row.bar:SetFillColor(UI:Color(left <= WARN_AT and "danger" or "info"))
+            row.bar:SetFillColor(UI:Color(left <= math.min(WARN_AT, t.duration / 4) and "danger" or "info"))
             row.time:SetText(left >= 10 and tostring(math.floor(left)) or ("%.1f"):format(left))
             row:Show()
         else
@@ -376,7 +380,7 @@ end
 ---------------------------------------------------------------------------
 
 function Stings:OnInitialize()
-    BuildLookups(self.db.showMark)
+    BuildLookups(self.db)
     self:BuildBar()
     self.events = HS:Events(self)
     local ticker = CreateFrame("Frame")
@@ -472,7 +476,7 @@ function Stings:OnDisable()
 end
 
 function Stings:Refresh()
-    BuildLookups(self.db.showMark)
+    BuildLookups(self.db)
     for plate, h in pairs(holders) do
         h:ClearAllPoints()
         h:SetPoint("BOTTOM", plate, "TOP", 0, self.db.offsetY or 6)
