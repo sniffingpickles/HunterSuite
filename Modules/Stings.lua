@@ -2,8 +2,10 @@
     HunterSuite - sting timers
     Serpent / Scorpid / Viper (and optionally Hunter's Mark) countdowns for
     your target on a bar you can place anywhere, and above enemy nameplates.
-    Aura data is secret in combat on Forever, so timers start from your own
-    casts and are corrected from real auras whenever the client lets us read them.
+    Aura data is secret in combat on Forever, so timers start when your shot
+    lands (the target's UNIT_AURA still fires) and are corrected from real
+    auras whenever the client lets us read them. A shot that never lands
+    (miss, resist, immune) leaves no timer.
 ]]
 
 local _, HS = ...
@@ -15,8 +17,12 @@ local Stings = HS:NewModule("stings", { title = L.STING_TIMERS_2 })
 local ROW_H, ROW_GAP, MAX_ROWS = 18, 4, 4
 local DOCK_GAP = 14       -- clears the Auto Shot bar's GCD line and delay text
 local WARN_AT = 3         -- seconds left when a row turns red (a quarter of short ones)
+-- Stings and Concussive Shot fly at 40 yards a second, so they land up to a
+-- second after the cast, and they can miss, be resisted or hit something immune.
+local LAND_WINDOW = 1.5   -- seconds a shot gets to land: a 41-yard flight plus slack
+local FLIGHT_GUESS = 0.5  -- typical flight, used until a landing has been seen in combat
 
-local tracked = {}        -- spellID -> { key, duration, ids, name }
+local tracked = {}        -- spellID -> { key, duration, ids, name, travels }
 local byName = {}         -- localized name -> entry
 local isSting = {}        -- key -> true for the stings, which replace each other
 for _, sting in ipairs(S.STINGS) do isSting[sting.key] = true end
@@ -30,21 +36,24 @@ local byPlate = {}        -- plate -> rec
 local byGUID = {}         -- guid -> rec
 local current
 
+local inFlight = {}       -- shots that haven't landed: { entry, icon, rec, castAt, deadline }
+local landingSeen = false -- UNIT_AURA has caught a landing while auras were secret
+
 local holders = {}        -- plate -> holder frame
 local pool = {}
 
 local function BuildLookups(db)
     wipe(tracked)
     wipe(byName)
-    local function add(key, ids, duration)
+    local function add(key, ids, duration, travels)
         local name = S.Name(ids)
-        local entry = { key = key, ids = ids, duration = duration, name = name or key }
+        local entry = { key = key, ids = ids, duration = duration, name = name or key, travels = travels }
         for _, id in ipairs(ids) do tracked[id] = entry end
         if name then byName[name] = entry end
     end
-    for _, sting in ipairs(S.STINGS) do add(sting.key, sting.ids, sting.duration) end
+    for _, sting in ipairs(S.STINGS) do add(sting.key, sting.ids, sting.duration, true) end
     if db.showMark then add("mark", S.HUNTERS_MARK, S.HUNTERS_MARK_DURATION) end
-    if db.showConcussive then add("concussive", S.CONCUSSIVE_SHOT, S.CONCUSSIVE_SHOT_DURATION) end
+    if db.showConcussive then add("concussive", S.CONCUSSIVE_SHOT, S.CONCUSSIVE_SHOT_DURATION, true) end
     if db.showWingClip then add("wingClip", S.WING_CLIP, S.WING_CLIP_DURATION) end
 end
 
@@ -198,10 +207,22 @@ local function Active(rec, now)
     return list
 end
 
+local function Flying(rec)
+    for _, shot in ipairs(inFlight) do
+        if shot.rec == rec then return true end
+    end
+    return false
+end
+
 local function Update(rec)
     local list = Active(rec, GetTime())
     if #list == 0 then
-        Drop(rec)
+        -- Keep the record while a shot at it is still in the air.
+        if not Flying(rec) then
+            Drop(rec)
+        elseif rec.plate then
+            ReleaseHolder(rec.plate)
+        end
         return
     end
     if not rec.plate then return end
@@ -215,6 +236,16 @@ end
 ---------------------------------------------------------------------------
 -- Sources
 ---------------------------------------------------------------------------
+
+-- The real auras are readable: shots they show landed, with exact times.
+local function Settle(rec)
+    for i = #inFlight, 1, -1 do
+        local shot = inFlight[i]
+        local t = shot.rec == rec and rec.timers[shot.entry.key]
+        -- an aura put on before the cast is the old sting, not this one
+        if t and t.expires - t.duration >= shot.castAt - 0.1 then table.remove(inFlight, i) end
+    end
+end
 
 -- Replace a unit's timers with its real auras, when they can be read.
 local function ScanUnit(unit)
@@ -233,31 +264,77 @@ local function ScanUnit(unit)
     if next(found) then
         local rec = Ensure(unit)
         rec.timers = found
+        Settle(rec)
         Update(rec)
     else
         local rec = Find(unit)
-        if rec then Drop(rec) end
+        if rec then
+            wipe(rec.timers)
+            Update(rec)
+        end
     end
     Stings:Wake()
 end
 
-function Stings:OnCast(spellID)
-    local entry = Lookup(spellID, C.GetSpellName(spellID))
-    if not entry or not UnitExists("target") then return end
-    local rec = Ensure("target")
+-- Start a shot's timer from the moment it reached the target.
+local function Land(shot, at)
+    local rec, entry = shot.rec, shot.entry
+    if not records[rec] then return end -- the target died or was forgotten meanwhile
     if isSting[entry.key] then
         -- One sting per hunter on a target: a new one replaces the last.
         for key in pairs(rec.timers) do
             if isSting[key] then rec.timers[key] = nil end
         end
     end
-    local now = GetTime()
     rec.timers[entry.key] = {
-        expires = now + entry.duration, duration = entry.duration,
-        icon = C.GetSpellTexture(spellID) or S.Icon(entry.ids), name = entry.name,
+        expires = at + entry.duration, duration = entry.duration, icon = shot.icon, name = entry.name,
     }
     Update(rec)
-    self:Wake()
+    Stings:Wake()
+end
+
+-- A unit with a shot in the air got an aura change: the shot landed. In
+-- combat the event's contents are secret, but it still fires on time.
+local function Landed(unit)
+    if #inFlight == 0 then return end
+    local rec = Find(unit)
+    if not rec then return end
+    local now = GetTime()
+    for i = #inFlight, 1, -1 do
+        local shot = inFlight[i]
+        if shot.rec == rec then
+            table.remove(inFlight, i)
+            Land(shot, now)
+            if C.AurasRestricted() then landingSeen = true end
+        end
+    end
+end
+
+-- Nothing landed in time. Once a landing has been caught in combat, that
+-- means a miss, a resist or an immune target. Until then the event may just
+-- not be reaching us, so the timer starts after a typical flight instead.
+local function Missed(shot)
+    if C.AurasRestricted() and not landingSeen then
+        Land(shot, shot.castAt + FLIGHT_GUESS)
+    elseif records[shot.rec] then
+        Update(shot.rec)
+    end
+end
+
+function Stings:OnCast(spellID)
+    local entry = Lookup(spellID, C.GetSpellName(spellID))
+    if not entry or not UnitExists("target") then return end
+    local now = GetTime()
+    local shot = {
+        entry = entry, rec = Ensure("target"), castAt = now,
+        icon = C.GetSpellTexture(spellID) or S.Icon(entry.ids),
+    }
+    if entry.travels then
+        shot.deadline = now + LAND_WINDOW + C.GetLatency()
+        inFlight[#inFlight + 1] = shot
+    else
+        Land(shot, now)
+    end
     -- When reads are allowed the real aura replaces the estimate.
     C_Timer.After(0.3, function() ScanUnit("target") end)
 end
@@ -351,7 +428,7 @@ function Stings:Draw()
         if current and C.Readable(UnitIsDead("target")) then Drop(current) end
         list = current and Active(current, now)
         if not list or #list == 0 then
-            if current then Drop(current) end
+            if current and not Flying(current) then Drop(current) end
             f:Hide()
             return
         end
@@ -391,6 +468,13 @@ function Stings:OnInitialize()
         if accum < 0.1 then return end
         accum = 0
         local now = GetTime()
+        for i = #inFlight, 1, -1 do
+            local shot = inFlight[i]
+            if now >= shot.deadline then
+                table.remove(inFlight, i)
+                Missed(shot)
+            end
+        end
         for rec in pairs(records) do
             for _, t in pairs(rec.timers) do
                 if t.expires <= now then
@@ -445,7 +529,10 @@ function Stings:OnEnable()
     end)
     ev:On("UNIT_AURA", function(_, _, unit)
         if C.IsSecret(unit) or type(unit) ~= "string" then return end
-        if unit == "target" or unit:find("^nameplate") then ScanUnit(unit) end
+        if unit == "target" or unit:find("^nameplate") then
+            Landed(unit)
+            ScanUnit(unit)
+        end
     end)
     ev:On("PLAYER_REGEN_ENABLED", function()
         if C_NamePlate and C_NamePlate.GetNamePlates then
@@ -457,6 +544,7 @@ function Stings:OnEnable()
         ScanUnit("target")
     end)
     ev:On("PLAYER_DEAD", function()
+        wipe(inFlight)
         for rec in pairs(records) do Drop(rec) end
         self:Wake()
     end)
@@ -469,6 +557,7 @@ function Stings:OnDisable()
     self.events:OffAll()
     self.ticker:Hide()
     for plate in pairs(holders) do ReleaseHolder(plate) end
+    wipe(inFlight)
     wipe(records)
     wipe(byPlate)
     wipe(byGUID)
