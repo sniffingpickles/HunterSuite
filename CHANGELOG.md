@@ -1,9 +1,13 @@
-# HunterSuite 4.3.0
+# HunterSuite 4.4.0
 
-Concussive Shot and Wing Clip timers. Thanks again to Imppen for the idea.
+A Freezing Trap timer, Serpent Sting tick marks, sting timers that wait for the shot to land, and Chinese translations. Thanks to Imppen, kdmiller0220 and AreChen.
 
 ### New
-- **Concussive Shot and Wing Clip:** countdowns on the sting bar and on nameplates, next to your sting and Hunter's Mark. Each has its own switch under Traps & Stings.
+- **Freezing Trap:** a row showing how long a frozen mob stays frozen, whether you target it or not. On Forever the game draws it straight from the debuff, so it stays exact in combat. Place it with `/hs edit`. On Burning Crusade Anniversary the freeze shows on the sting bar instead.
+- **Serpent Sting tick marks:** marks on the Serpent Sting bar where each damage tick lands. Each one flashes as its tick goes off.
+- **Chinese:** Simplified and Traditional Chinese translations, from AreChen.
 
-### Changed
-- **Sting bar:** short timers turn red in their last quarter instead of their last 3 seconds, so a 4-second daze isn't red the whole time.
+Both timers have their own switch under Traps & Stings.
+
+### Fixed
+- **Sting timers:** stings and Concussive Shot take time to reach the target, so their timers now start when the shot lands instead of on the cast. A shot that misses, is resisted or hits an immune target leaves no timer, and your previous sting's timer stays.
