@@ -162,7 +162,8 @@ function BarMixin:SetSparkShown(shown)
 end
 
 -- A dark track with a 1px edge, a fill, and a spark at the fill edge.
--- opts: height, spark (bool), border (color key), track (color key)
+-- opts: height, spark (bool), border (color key), track (color key),
+--       static (texture set once, not when the Appearance texture changes)
 function UI:Bar(parent, opts)
     opts = opts or {}
     local f = CreateFrame("Frame", nil, parent)
@@ -178,7 +179,11 @@ function UI:Bar(parent, opts)
     local px = UI.OnePixel(f)
     bar:SetPoint("TOPLEFT", px, -px)
     bar:SetPoint("BOTTOMRIGHT", -px, px)
-    UI:TrackBarTexture(bar)
+    if opts.static then
+        bar:SetStatusBarTexture(UI:BarTexture())
+    else
+        UI:TrackBarTexture(bar)
+    end
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
     f.bar = bar

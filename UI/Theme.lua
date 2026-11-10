@@ -175,12 +175,13 @@ local function ApplyFont(fs, spec)
 end
 
 -- Create a font string that follows the Appearance font settings.
--- opts: size, flags ("OUTLINE"...), color (palette key or {r,g,b,a}), justify, layer, shadow
+-- opts: size, flags ("OUTLINE"...), color (palette key or {r,g,b,a}), justify, layer, shadow,
+--       static (styled once and left alone: Blizzard's aura rows refuse later changes in combat)
 function UI:Text(parent, opts)
     opts = opts or {}
     local fs = parent:CreateFontString(nil, opts.layer or "OVERLAY")
     local spec = { size = opts.size or 12, flags = opts.flags, shadow = opts.shadow }
-    fontStrings[fs] = spec
+    if not opts.static then fontStrings[fs] = spec end
     ApplyFont(fs, spec)
     local color = opts.color or "text"
     if type(color) == "table" then

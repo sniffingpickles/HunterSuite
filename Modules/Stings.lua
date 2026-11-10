@@ -5,7 +5,8 @@
     Aura data is secret in combat on Forever, so timers start when your shot
     lands (the target's UNIT_AURA still fires) and are corrected from real
     auras whenever the client lets us read them. A shot that never lands
-    (miss, resist, immune) leaves no timer.
+    (miss, resist, immune) leaves no timer. Freezing Trap gets a row the
+    client draws itself from the real aura, so it is exact even in combat.
 ]]
 
 local _, HS = ...
@@ -17,17 +18,18 @@ local Stings = HS:NewModule("stings", { title = L.STING_TIMERS_2 })
 local ROW_H, ROW_GAP, MAX_ROWS = 18, 4, 4
 local DOCK_GAP = 14       -- clears the Auto Shot bar's GCD line and delay text
 local WARN_AT = 3         -- seconds left when a row turns red (a quarter of short ones)
+local TICK_FLASH = 0.3    -- seconds a tick mark stays lit after its damage goes off
 -- Stings and Concussive Shot fly at 40 yards a second, so they land up to a
 -- second after the cast, and they can miss, be resisted or hit something immune.
 local LAND_WINDOW = 1.5   -- seconds a shot gets to land: a 41-yard flight plus slack
 local FLIGHT_GUESS = 0.5  -- typical flight, used until a landing has been seen in combat
 
-local tracked = {}        -- spellID -> { key, duration, ids, name, travels }
+local tracked = {}        -- spellID -> { key, duration, ids, name, travels, tick }
 local byName = {}         -- localized name -> entry
 local isSting = {}        -- key -> true for the stings, which replace each other
 for _, sting in ipairs(S.STINGS) do isSting[sting.key] = true end
 
--- One record per enemy: { timers = { [key] = { expires, duration, icon, name } }, plate, guid }.
+-- One record per enemy: { timers = { [key] = { expires, duration, icon, name, tick } }, plate, guid }.
 -- Other units' GUIDs are secret in combat, so a record is found by its
 -- nameplate frame, by GUID when that's readable, or as `current`, which is
 -- always the record of whatever you're targeting now.
@@ -42,19 +44,27 @@ local landingSeen = false -- UNIT_AURA has caught a landing while auras were sec
 local holders = {}        -- plate -> holder frame
 local pool = {}
 
+-- The Freezing Trap row: { frame, ids, containers = { [unit] = container } }
+-- once built, false on clients without aura containers, which time the
+-- freeze on the bar like the rest.
+local freeze
+local FreezeUnitChanged
+
 local function BuildLookups(db)
     wipe(tracked)
     wipe(byName)
-    local function add(key, ids, duration, travels)
+    local function add(key, ids, duration, travels, tick)
         local name = S.Name(ids)
-        local entry = { key = key, ids = ids, duration = duration, name = name or key, travels = travels }
+        local entry = { key = key, ids = ids, duration = duration, name = name or key, travels = travels, tick = tick }
         for _, id in ipairs(ids) do tracked[id] = entry end
         if name then byName[name] = entry end
     end
-    for _, sting in ipairs(S.STINGS) do add(sting.key, sting.ids, sting.duration, true) end
+    for _, sting in ipairs(S.STINGS) do add(sting.key, sting.ids, sting.duration, true, sting.tick) end
     if db.showMark then add("mark", S.HUNTERS_MARK, S.HUNTERS_MARK_DURATION) end
     if db.showConcussive then add("concussive", S.CONCUSSIVE_SHOT, S.CONCUSSIVE_SHOT_DURATION, true) end
     if db.showWingClip then add("wingClip", S.WING_CLIP, S.WING_CLIP_DURATION) end
+    -- No duration: a freeze starts when something walks into the trap, not on a cast.
+    if db.showFreeze and not freeze then add("freeze", S.TRAPS[1].effect) end
 end
 
 local function Lookup(spellID, name)
@@ -256,7 +266,7 @@ local function ScanUnit(unit)
         if entry then
             local duration, expires = C.AuraTimes(aura)
             if duration and duration > 0 then
-                found[entry.key] = { expires = expires, duration = duration, icon = aura.icon, name = entry.name }
+                found[entry.key] = { expires = expires, duration = duration, icon = aura.icon, name = entry.name, tick = entry.tick }
             end
         end
     end)
@@ -287,7 +297,7 @@ local function Land(shot, at)
         end
     end
     rec.timers[entry.key] = {
-        expires = at + entry.duration, duration = entry.duration, icon = shot.icon, name = entry.name,
+        expires = at + entry.duration, duration = entry.duration, icon = shot.icon, name = entry.name, tick = entry.tick,
     }
     Update(rec)
     Stings:Wake()
@@ -323,7 +333,7 @@ end
 
 function Stings:OnCast(spellID)
     local entry = Lookup(spellID, C.GetSpellName(spellID))
-    if not entry or not UnitExists("target") then return end
+    if not entry or not entry.duration or not UnitExists("target") then return end
     local now = GetTime()
     local shot = {
         entry = entry, rec = Ensure("target"), castAt = now,
@@ -345,6 +355,8 @@ function Stings:OnTargetChanged()
         current = Find("target")
         ScanUnit("target")
     end
+    -- Containers only reread on UNIT_AURA, not when "target" changes hands.
+    if freeze then FreezeUnitChanged("target") end
     self:Wake()
 end
 
@@ -352,25 +364,33 @@ end
 -- Target bar
 ---------------------------------------------------------------------------
 
+-- Icon, then a bar with the name on the left and the time on the right.
+-- `static` rows are styled once and never restyled (see the freeze row).
+local function NewRow(parent, static)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetHeight(ROW_H)
+    row.iconFrame = UI:Icon(row, ROW_H)
+    row.iconFrame:SetPoint("LEFT")
+    row.bar = UI:Bar(row, { height = ROW_H - 2, spark = not static, static = static })
+    row.bar:SetPoint("LEFT", row.iconFrame, "RIGHT", 4, 0)
+    row.bar:SetPoint("RIGHT")
+    row.name = UI:Text(row.bar.bar, { size = 10, flags = "OUTLINE", static = static })
+    row.name:SetPoint("LEFT", 5, 0)
+    row.time = UI:Text(row.bar.bar, { size = 10, flags = "OUTLINE", static = static })
+    row.time:SetPoint("RIGHT", -5, 0)
+    row.marks = {}
+    row:Hide()
+    return row
+end
+
 function Stings:BuildBar()
     local f = UI:Element("HunterSuiteStings", self.db, L.STINGS)
     f:SetSize(self.db.barWidth or 200, ROW_H)
     f.rows = {}
     for i = 1, MAX_ROWS do
-        local row = CreateFrame("Frame", nil, f)
-        row:SetHeight(ROW_H)
+        local row = NewRow(f)
         row:SetPoint("TOPLEFT", 0, -(i - 1) * (ROW_H + ROW_GAP))
         row:SetPoint("TOPRIGHT", 0, -(i - 1) * (ROW_H + ROW_GAP))
-        row.iconFrame = UI:Icon(row, ROW_H)
-        row.iconFrame:SetPoint("LEFT")
-        row.bar = UI:Bar(row, { height = ROW_H - 2 })
-        row.bar:SetPoint("LEFT", row.iconFrame, "RIGHT", 4, 0)
-        row.bar:SetPoint("RIGHT")
-        row.name = UI:Text(row.bar.bar, { size = 10, flags = "OUTLINE" })
-        row.name:SetPoint("LEFT", 5, 0)
-        row.time = UI:Text(row.bar.bar, { size = 10, flags = "OUTLINE" })
-        row.time:SetPoint("RIGHT", -5, 0)
-        row:Hide()
         f.rows[i] = row
     end
     f:SetScript("OnUpdate", function() Stings:Draw() end)
@@ -410,13 +430,45 @@ function Stings:Wake()
 end
 
 local function Sample(now)
+    local serpent = S.STINGS[1]
     local list = {
-        { name = S.Name(S.STINGS[1].ids) or L.SERPENT_STING, icon = S.Icon(S.STINGS[1].ids) or 132204, expires = now + 2.4, duration = 15 },
+        { name = S.Name(serpent.ids) or L.SERPENT_STING, icon = S.Icon(serpent.ids) or 132204, expires = now + 7.4, duration = 15, tick = serpent.tick },
     }
     if Stings.db.showMark then
         list[2] = { name = S.Name(S.HUNTERS_MARK) or L.HUNTERS_MARK, icon = S.Icon(S.HUNTERS_MARK) or 132212, expires = now + 84, duration = 120 }
     end
     return list
+end
+
+-- Marks on the fill where the sting's coming damage ticks land. Each one
+-- lights up as its tick goes off, then the draining fill leaves it behind.
+local function DrawTicks(row, t, left)
+    local marks, n = row.marks, 0
+    local tick = Stings.db.showTicks and t.tick
+    if tick and left > 0 then
+        local bar = row.bar.bar
+        local width, px = bar:GetWidth(), UI.OnePixel(bar)
+        for at = t.duration - tick, 0.01, -tick do
+            local since = at - left -- seconds since this tick went off; negative while it's still coming
+            if since < TICK_FLASH then
+                n = n + 1
+                local mark = marks[n]
+                if not mark then
+                    mark = bar:CreateTexture(nil, "OVERLAY", nil, -1)
+                    mark:SetColorTexture(1, 1, 1, 1)
+                    marks[n] = mark
+                end
+                local x, lit = width * at / t.duration, since >= 0
+                mark:ClearAllPoints()
+                mark:SetPoint("TOP", bar, "TOPLEFT", x, 0)
+                mark:SetPoint("BOTTOM", bar, "BOTTOMLEFT", x, 0)
+                mark:SetWidth(lit and 3 * px or px)
+                mark:SetAlpha(lit and 1 - since / TICK_FLASH or 0.45)
+                mark:Show()
+            end
+        end
+    end
+    for i = n + 1, #marks do marks[i]:Hide() end
 end
 
 function Stings:Draw()
@@ -444,6 +496,7 @@ function Stings:Draw()
             row.bar:SetValueNow(left)
             row.bar:SetFillColor(UI:Color(left <= math.min(WARN_AT, t.duration / 4) and "danger" or "info"))
             row.time:SetText(left >= 10 and tostring(math.floor(left)) or ("%.1f"):format(left))
+            DrawTicks(row, t, left)
             row:Show()
         else
             row:Hide()
@@ -451,6 +504,151 @@ function Stings:Draw()
     end
     local n = math.min(#list, MAX_ROWS)
     f:SetHeight(math.max(ROW_H, n * ROW_H + (n - 1) * ROW_GAP))
+end
+
+---------------------------------------------------------------------------
+-- Freezing Trap row
+---------------------------------------------------------------------------
+
+-- Blizzard's aura containers draw a row straight from an aura, and addon
+-- code never reads it, so this row is exact in combat too. A container may
+-- pick an enemy's debuffs by spell ID, which is all a freeze needs. Whatever
+-- a container hangs from can't move or hide in combat, so the row has a frame
+-- of its own instead of a slot on the sting bar (which resizes as stings come
+-- and go). The target and every enemy nameplate get a container, so a frozen
+-- mob shows whether you target it or not.
+
+local function FreezeName()
+    return S.Name(S.TRAPS[1].place) or L.FREEZING_TRAP
+end
+
+-- Tenths under 10 seconds, whole seconds above, like the sting rows.
+local function TimeFormatter()
+    local rounding = Enum.NumericRuleFormatRounding
+    if not (C_StringUtil and C_StringUtil.CreateNumericRuleFormatter and rounding) then return nil end
+    local ok, fmt = pcall(C_StringUtil.CreateNumericRuleFormatter)
+    if not ok or not fmt then return nil end
+    ok = pcall(fmt.SetBreakpoints, fmt, {
+        { threshold = 0, format = "%.1f", step = 0.1, rounding = rounding.Down },
+        { threshold = 10, format = "%d", step = 1, rounding = rounding.Down },
+    })
+    return ok and fmt or nil
+end
+
+-- Lays out the row the client fills in. The container calls this once, as it
+-- makes the row; while auras are secret the client refuses any later change.
+local function DressFreezeRow(button)
+    button:SetAllPoints(freeze.frame)
+    if button.SetMouseClickEnabled then button:SetMouseClickEnabled(false) end
+    if button.SetMouseMotionEnabled then button:SetMouseMotionEnabled(false) end
+    local row = NewRow(button, true)
+    row:SetAllPoints(button)
+    row:Show()
+    row.bar:SetFillColor(UI:Color("info"))
+    row.name:SetText(FreezeName())
+    button:SetIcon(row.iconFrame.icon)
+    local opts = {}
+    if Enum.StatusBarInterpolation then opts.interpolation = Enum.StatusBarInterpolation.Immediate end
+    if Enum.StatusBarTimerDirection then opts.direction = Enum.StatusBarTimerDirection.RemainingTime end
+    button:SetDurationBar(row.bar.bar, opts)
+    -- An error in here would cost the whole row, so the text falls back to the client's format.
+    if not pcall(button.SetDurationText, button, row.time, { textFormatter = TimeFormatter() }) then
+        pcall(button.SetDurationText, button, row.time, {})
+    end
+end
+
+-- A container watches one unit, so each nameplate gets its own, made when
+-- its token first turns up (making one is allowed in combat).
+local function FreezeContainer(unit)
+    local c = freeze.containers[unit]
+    if c then return c end
+    local ok
+    ok, c = pcall(CreateFrame, "AuraContainer", nil, freeze.frame, "CustomAuraContainerTemplate")
+    if not ok or not c then return nil end
+    c:SetPoint("TOPLEFT")
+    c:SetSize(1, 1)
+    ok = pcall(c.AddAuraSlot, c, "freeze", "HARMFUL", {
+        candidateFilters = { includeSpellIDs = freeze.ids },
+        initializeFrame = DressFreezeRow,
+    })
+    if not ok or not pcall(c.SetUnit, c, unit) then return nil end
+    freeze.containers[unit] = c
+    return c
+end
+
+-- A token now points at another mob, or at none (`state` is "added" or
+-- "removed" for nameplates): its container rereads. The target's own row
+-- stands down while the target has a nameplate, so a frozen mob shows once.
+function FreezeUnitChanged(unit, state)
+    local target = freeze.containers.target
+    local ok, targetPlate = pcall(C_NamePlate.GetNamePlateForUnit, "target")
+    targetPlate = ok and targetPlate or nil
+    if unit ~= "target" then
+        local c = freeze.containers[unit] or (state == "added" and FreezeContainer(unit))
+        if state == "removed" then
+            -- The token still names the old mob while its plate goes, so the slot just switches off.
+            local _, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+            if plate and plate == targetPlate then targetPlate = nil end
+            if c then pcall(c.SetAuraSlotEnabled, c, "freeze", false) end
+        elseif c then
+            pcall(c.SetAuraSlotEnabled, c, "freeze", true)
+            pcall(c.UpdateAllAuras, c)
+        end
+    end
+    pcall(target.SetAuraSlotEnabled, target, "freeze", targetPlate == nil)
+    pcall(target.UpdateAllAuras, target)
+end
+
+local function BuildFreeze()
+    if freeze ~= nil then return freeze end
+    freeze = false
+    if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.LoadAddOn
+        and not C_AddOns.IsAddOnLoaded("Blizzard_AuraContainer") then
+        pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer")
+    end
+    local db = Stings.db
+    local f = UI:Element("HunterSuiteFreeze", db.freeze, FreezeName())
+    f:SetSize(db.barWidth or 200, ROW_H)
+    f:Hide()
+    local ids = {}
+    for _, id in ipairs(S.TRAPS[1].effect) do ids[id] = true end
+    freeze = { frame = f, ids = ids, containers = {} }
+    if not C_NamePlate or not FreezeContainer("target") then
+        freeze = false
+        return false
+    end
+    f.hsProtected = true -- ApplyPosition waits for the end of combat
+    for _, plate in ipairs(C_NamePlate.GetNamePlates() or {}) do
+        local unit = plate.namePlateUnitToken
+        if unit and not C.IsSecret(unit) then FreezeContainer(unit) end
+    end
+    FreezeUnitChanged("target")
+
+    -- Something to place in edit mode
+    local sample = NewRow(f)
+    sample:SetAllPoints(f)
+    sample.iconFrame.icon:SetTexture(S.Icon(S.TRAPS[1].place) or 135834)
+    sample.name:SetText(FreezeName())
+    sample.bar:SetFillColor(UI:Color("info"))
+    sample.bar:SetRange(0, 20)
+    sample.bar:SetValueNow(12.4)
+    sample.time:SetText("12")
+    f.sample = sample
+    HS.Movers:Register(f, { label = FreezeName(), defaultPath = "stings.freeze.position", module = "stings",
+        hidden = function() return not Stings.db.showFreeze end })
+    return freeze
+end
+
+-- Show or hide the row and match the sting bar's width, out of combat only.
+local function PlaceFreeze(shown)
+    if not freeze then return end
+    HS:RunOutOfCombat(function()
+        local f = freeze.frame
+        f:SetWidth(Stings.db.barWidth or 200)
+        UI:ApplyPosition(f)
+        f:SetShown(shown)
+        f.sample:SetShown(shown and HS.state.editMode == true)
+    end, "stings.freeze")
 end
 
 ---------------------------------------------------------------------------
@@ -510,12 +708,14 @@ function Stings:OnEnable()
     ev:On("PLAYER_TARGET_CHANGED", function() self:OnTargetChanged() end)
     ev:On("NAME_PLATE_UNIT_ADDED", function(_, _, unit)
         if C.IsSecret(unit) then return end
+        if freeze then FreezeUnitChanged(unit, "added") end
         local rec = Find(unit)
         if rec then Update(rec) end
         ScanUnit(unit)
     end)
     ev:On("NAME_PLATE_UNIT_REMOVED", function(_, _, unit)
         if C.IsSecret(unit) then return end
+        if freeze then FreezeUnitChanged(unit, "removed") end
         local plate = PlateFor(unit)
         if not plate then return end
         ReleaseHolder(plate)
@@ -548,6 +748,9 @@ function Stings:OnEnable()
         for rec in pairs(records) do Drop(rec) end
         self:Wake()
     end)
+    if self.db.showFreeze then BuildFreeze() end
+    BuildLookups(self.db)
+    PlaceFreeze(self.db.showFreeze)
     self:Layout()
     self.ticker:Show()
     self:OnTargetChanged()
@@ -555,6 +758,7 @@ end
 
 function Stings:OnDisable()
     self.events:OffAll()
+    PlaceFreeze(false)
     self.ticker:Hide()
     for plate in pairs(holders) do ReleaseHolder(plate) end
     wipe(inFlight)
@@ -566,7 +770,9 @@ function Stings:OnDisable()
 end
 
 function Stings:Refresh()
+    if self.db.showFreeze then BuildFreeze() end
     BuildLookups(self.db)
+    PlaceFreeze(self.enabled and self.db.showFreeze)
     for plate, h in pairs(holders) do
         h:ClearAllPoints()
         h:SetPoint("BOTTOM", plate, "TOP", 0, self.db.offsetY or 6)
@@ -580,7 +786,10 @@ function Stings:Refresh()
 end
 
 HS:On("EDIT_MODE", function()
-    if Stings.enabled then Stings:Wake() end
+    if Stings.enabled then
+        Stings:Wake()
+        PlaceFreeze(Stings.db.showFreeze)
+    end
 end)
 
 -- Re-dock when the Auto Shot bar moves or is toggled.

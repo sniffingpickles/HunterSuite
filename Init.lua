@@ -200,9 +200,13 @@ HS.defaults = {
         showMark = true,
         showConcussive = true,
         showWingClip = true,
+        showFreeze = true,
+        showTicks = true,       -- Serpent Sting damage ticks on its bar
         showText = true,
         offsetY = 6,
         position = { point = "CENTER", x = 250, y = -250 },
+        -- Freezing Trap's own row, clear of a full sting bar at the default spot
+        freeze = { position = { point = "CENTER", x = 250, y = -194 } },
     },
     autoMark = {
         enabled = false,

@@ -38,8 +38,10 @@ S.ASPECTS = {
 }
 
 -- Traps: the placed spell and the effect it leaves on whatever it catches.
+-- Forever's SpellName table (build 1.60.1) also has copies of the three
+-- freeze ranks under new IDs (1324500-1324502).
 S.TRAPS = {
-    { key = "freezing",  place = { 1499, 14310, 14311 },        effect = { 3355, 14308, 14309 }, cc = true },
+    { key = "freezing",  place = { 1499, 14310, 14311 },        effect = { 3355, 14308, 14309, 1324500, 1324501, 1324502 }, cc = true },
     { key = "frost",     place = { 13809 },                     effect = { 13810 } },
     { key = "immolation", place = { 13795, 14302, 14303, 14304, 14305, 27023 }, effect = { 13797, 14298, 14299, 14300, 14301, 27024 } },
     { key = "explosive", place = { 13813, 14316, 14317, 27025 }, effect = { 13812, 14314, 14315, 27026 } },
@@ -48,8 +50,9 @@ S.TRAPS = {
 
 -- Debuffs worth a nameplate timer. `duration` is the base length, used when
 -- the client will not tell us (aura data is secret in combat on Forever).
+-- `tick` is the seconds between damage ticks.
 S.STINGS = {
-    { key = "serpent", duration = 15, ids = { 1978, 13549, 13550, 13551, 13552, 13553, 13554, 13555, 25295, 27016 } },
+    { key = "serpent", duration = 15, tick = 3, ids = { 1978, 13549, 13550, 13551, 13552, 13553, 13554, 13555, 25295, 27016 } },
     { key = "scorpid", duration = 20, ids = { 3043, 14275, 14276, 14277, 27060 } },
     { key = "viper",   duration = 8,  ids = { 3034, 14279, 14280, 27018 } },
     { key = "wyvern",  duration = 12, ids = { 19386, 24132, 24133, 27068 } },

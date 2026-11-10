@@ -41,6 +41,8 @@ All reminders share one tidy stack. Right-click one to dismiss it.
 - **Ammo counter** with low and critical warnings and "~N minutes of shooting left". Hidden for thrown weapons and wands.
 - **Trap timers:** arming, then the time left before each trap despawns.
 - **Sting timers:** Sting, Hunter's Mark, Concussive Shot and Wing Clip countdowns for your target, on a bar you can place anywhere or dock under the Auto Shot bar, on enemy nameplates, or both.
+- **Freezing Trap timer:** how long a frozen mob stays frozen, targeted or not, on a row of its own that you place in edit mode.
+- **Serpent Sting tick marks:** where each damage tick lands on the sting's bar, flashing as it goes off.
 
 ### Burning Crusade clients
 - **Weaving Bar:** a Steady Shot rotation guide based on diziet559's rotation tools.
@@ -98,7 +100,8 @@ Use `/click HunterSuiteFeedButton RightButton` for Mend Pet.
 
 Forever runs the modern engine. Addons can't read the combat log, and in combat, encounters and PvP the game hides buff, cooldown and health details from addons. HunterSuite is built around that:
 - Swing timing comes from the native swing timer.
-- Aspect and sting timers follow your own casts.
+- Aspect timers follow your own casts, and sting timers start when the shot lands.
+- The Freezing Trap row is drawn by the game itself, so it stays exact in combat.
 - The pet cards use secure buttons that keep working in combat.
 - Anything exact (food choice, aspect checks) is re-read the moment combat ends.
 
