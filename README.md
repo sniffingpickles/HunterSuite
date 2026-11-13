@@ -13,6 +13,8 @@ One addon, one clean modern look: your pet, your Auto Shot, your range and every
 - **Left-click feeds** the best food in your bags. **Right-click casts Mend Pet.**
 - The game tells HunterSuite what your pet will eat. On Burning Crusade Anniversary it uses a built-in list of every pet food in the game. **Smart** mode uses the cheapest food that still gives full happiness, skips food that's too low level, and finishes small stacks first.
 - If your pet refuses a food, the card moves on to the next one.
+- **Pick the food yourself** - Click the food icon for a list of every food your pet will eat in your bags. The card then feeds only that food for this pet family, and shows no food rather than switching when it runs out. Auto, at the top of the list, goes back to the setting.
+- **Never feed a food** - Right-click a food in that list and Auto skips it, for rare foods or quest items you want to keep. Right-click it again, or use Allow all again in the settings, to undo.
 - Glows when your pet is unhappy or below your Mend Pet threshold.
 - Shows up in combat whenever you need it, and stays out of the way when your pet is happy.
 

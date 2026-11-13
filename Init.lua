@@ -13,7 +13,7 @@ HS.title = "HunterSuite"
 HS.state = { editMode = false }
 
 local GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-HS.version = GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version") or "4.5.0"
+HS.version = GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version") or "4.6.0"
 
 -- Client detection. WoW Forever (game type "camelot") is the 12.x engine with
 -- vanilla content and reports a 1.60+ toc, so the interface number is the one
@@ -236,6 +236,8 @@ HS.defaults = {
 
 HS.charDefaults = {
     hadPet = false,
+    petFood = {},       -- pet family ID (or name on TBC) -> itemID picked on the pet card
+    neverFeed = {},     -- itemID -> true: the pet card's Auto never feeds it
 }
 
 ---------------------------------------------------------------------------
@@ -293,6 +295,8 @@ end
 function HS:ResetProfile()
     self.sv.profile = CopyDefaults(self.defaults, {})
     self.db = self.sv.profile
+    -- Foods picked or never fed on the pet card are settings too, kept per character.
+    if self.char then self.char.petFood, self.char.neverFeed = {}, {} end
 end
 
 ---------------------------------------------------------------------------

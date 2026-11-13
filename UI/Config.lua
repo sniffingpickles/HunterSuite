@@ -1024,8 +1024,12 @@ function HS:ShowDiagnostics()
         add(L.DIAG_DIET, table.concat(C.GetPetFoodTypes(), ", "))
         local petMod = HS:GetModule("petBar")
         if petMod.initialized then
-            local food, list = petMod:FindFood()
+            local food, list, chosen = petMod:PickFood()
             add(L.DIAG_FOOD_CHOICE, food and (tostring(food.name) .. " #" .. food.itemID) or L.NONE, #list)
+            if chosen then add(L.DIAG_FOOD_PICKED, chosen, tostring(petMod:FamilyKey())) end
+            local never = {}
+            for itemID in pairs(HS.char.neverFeed) do never[#never + 1] = "#" .. itemID end
+            if #never > 0 then add(L.NEVER_FED_S, table.concat(never, ", ")) end
         end
     else
         add(L.DIAG_PET_NONE)
