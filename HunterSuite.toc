@@ -4,7 +4,7 @@
 ## Notes-zhCN: 猎人综合辅助工具：宠物喂养与治疗、自动射击计时、射程盲区、陷阱与钉刺计时、弹药和守护提醒。
 ## Notes-zhTW: 獵人綜合輔助工具：寵物餵養與治療、自動射擊計時、射程盲區、陷阱與釘刺計時、彈藥和守護提醒。
 ## Author: muggles
-## Version: 4.4.0
+## Version: 4.5.0
 ## X-Curse-Project-ID: 1447095
 ## SavedVariables: HunterSuiteDB
 ## SavedVariablesPerCharacter: HunterSuiteCharDB
