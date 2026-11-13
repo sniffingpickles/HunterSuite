@@ -43,9 +43,19 @@ function Ammo:Build()
         local link = GetInventoryItemLink("player", AMMO_SLOT)
         GameTooltip:AddLine(link or L.AMMO, 1, 1, 1)
         GameTooltip:AddLine((L.LOW_BELOW_D_CRITICAL_BELOW_D):format(self.db.low, self.db.critical), 0.75, 0.77, 0.8)
+        local restock = HS:GetModule("restock")
+        if restock and restock.enabled then
+            GameTooltip:AddLine(L.CLICK_TO_PIN_THE_NEAREST_AMMO_VENDOR, 0.75, 0.77, 0.8)
+        end
         GameTooltip:Show()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    f:SetScript("OnMouseUp", function(_, button)
+        local restock = HS:GetModule("restock")
+        if button == "LeftButton" and not HS.state.editMode and restock and restock.enabled then
+            HS:FindAmmoVendor()
+        end
+    end)
     f:Hide()
     self.frame = f
     HS.Movers:Register(f, { label = L.AMMO, defaultPath = "ammo.position", module = "ammo" })

@@ -185,6 +185,14 @@ HS.defaults = {
         sound = true,
         position = { point = "CENTER", x = 0, y = -228 },
     },
+    restock = {
+        enabled = true,
+        amount = 1200,          -- top up to this many of your best ammo
+        fill = false,           -- fill your quivers or ammo pouches instead
+        useBags = true,         -- let ammo go into regular bag slots too
+        auto = false,           -- buy without the click when a vendor opens
+        equip = true,           -- put the new ammo on when it beats what you wear
+    },
     traps = {
         enabled = true,
         duration = 60,
@@ -544,6 +552,7 @@ HS.slashHelp = {
     { "edit", L.MOVE_AND_RESIZE_FRAMES_EDIT_MODE },
     { "lock", L.LEAVE_EDIT_MODE },
     { "feed", L.SHOW_WHICH_FOOD_THE_PET_CARD_WILL_USE },
+    { "ammo", L.PIN_THE_NEAREST_AMMO_VENDOR },
     { "diag", L.CLIENT_AND_API_REPORT_COPYABLE },
     { "reset", L.RESET_ALL_SETTINGS },
 }
@@ -581,6 +590,8 @@ SlashCmdList.HUNTERSUITE = function(msg)
         else
             HS:Print(L.THE_PET_CARD_IS_TURNED_OFF_HS_PET)
         end
+    elseif cmd == "ammo" or cmd == "vendor" then
+        HS:FindAmmoVendor()
     elseif cmd == "diag" or cmd == "debug" then
         HS:ShowDiagnostics()
     elseif cmd == "reset" then

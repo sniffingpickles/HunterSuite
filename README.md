@@ -39,6 +39,7 @@ All reminders share one tidy stack. Right-click one to dismiss it.
 
 ### Ammo, traps and stings
 - **Ammo counter** with low and critical warnings and "~N minutes of shooting left". Hidden for thrown weapons and wands.
+- **Ammo restock:** at a vendor that sells your ammo, a panel beside the vendor window tops you up with the best you can use, to the amount you keep (1200 by default) or a full quiver. `/hs ammo`, or a click on the ammo counter, pins the nearest vendor that sells it.
 - **Trap timers:** arming, then the time left before each trap despawns.
 - **Sting timers:** Sting, Hunter's Mark, Concussive Shot and Wing Clip countdowns for your target, on a bar you can place anywhere or dock under the Auto Shot bar, on enemy nameplates, or both.
 - **Freezing Trap timer:** how long a frozen mob stays frozen, targeted or not, on a row of its own that you place in edit mode.
@@ -78,6 +79,7 @@ lua tests/addon_load.lua
 | `/hs` | Settings window |
 | `/hs edit` | Edit mode |
 | `/hs feed` | Show which food the pet card will use |
+| `/hs ammo` | Pin the nearest ammo vendor on your map |
 | `/hs test` | Preview the alerts |
 | `/hs diag` | Copyable client report (please include it in bug reports) |
 | `/hs reset` | Reset all settings (asks first) |

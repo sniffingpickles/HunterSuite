@@ -129,6 +129,22 @@ O.pages = {
                 },
             },
             {
+                title = L.AMMO_RESTOCK, module = "restock", icon = 132382,
+                items = {
+                    { type = "info", text = L.AMMO_RESTOCK_DESCRIPTION },
+                    { type = "slider", path = "restock.amount", label = L.TOP_UP_TO, min = 200, max = 4000, step = 200, format = plain },
+                    { type = "toggle", path = "restock.fill", label = L.FILL_MY_QUIVER_OR_AMMO_POUCH,
+                      desc = L.FILL_MY_QUIVER_OR_AMMO_POUCH_DESCRIPTION },
+                    { type = "toggle", path = "restock.useBags", label = L.USE_REGULAR_BAG_SLOTS_TOO },
+                    { type = "toggle", path = "restock.auto", label = L.TOP_UP_AUTOMATICALLY,
+                      desc = L.TOP_UP_AUTOMATICALLY_DESCRIPTION },
+                    { type = "toggle", path = "restock.equip", label = L.EQUIP_BETTER_AMMO,
+                      desc = L.EQUIP_BETTER_AMMO_DESCRIPTION },
+                    { type = "button", label = L.NEAREST_AMMO_VENDOR, text = L.PIN_ON_MY_MAP,
+                      action = function() HS:FindAmmoVendor() end },
+                },
+            },
+            {
                 title = L.ALERT_STACK, icon = 132329,
                 items = {
                     { type = "segmented", path = "alerts.grow", label = L.GROW, values = { { "DOWN", L.DOWN }, { "UP", L.UP } } },
@@ -240,6 +256,7 @@ O.moduleBlurbs = {
     growl = { icon = 132270, text = L.TAUNT_ON_IN_GROUPS_OFF_SOLO },
     tracking = { icon = 135942, text = L.TRACK_HUMANOIDS_IN_BATTLEGROUNDS },
     ammo = { icon = 132382, text = L.COUNTER_AND_LOW_AMMO_WARNING },
+    restock = { icon = 132382, text = L.TOP_UP_AMMO_AND_FIND_VENDORS },
     traps = { icon = 135834, text = L.ARMING_AND_LIFETIME_TIMERS },
     stings = { icon = 132204, text = L.STING_COUNTDOWNS_FOR_YOUR_TARGET },
     autoMark = { icon = 137008, text = L.SKULL_ENEMY_PETS_IN_PVP, notOnForever = true },

@@ -28,6 +28,7 @@ Compat.lua
 Data\Spells.lua
 Data\Food.lua
 Data\PetFamilies.lua
+Data\AmmoVendors.lua
 
 UI\Theme.lua
 UI\Widgets.lua
@@ -42,6 +43,7 @@ Modules\Aspects.lua
 Modules\Growl.lua
 Modules\Tracking.lua
 Modules\Ammo.lua
+Modules\Restock.lua
 Modules\Traps.lua
 Modules\Stings.lua
 Modules\AutoMark.lua

@@ -338,6 +338,59 @@ function C.RequestItem(itemID, cb)
     cb()
 end
 
+-- Free slots in a bag and its family: 0 takes anything, 1 is a quiver, 2 an ammo pouch.
+function C.GetBagFreeSlots(bag)
+    if C_Container and C_Container.GetContainerNumFreeSlots then
+        local free, family = C_Container.GetContainerNumFreeSlots(bag)
+        return free or 0, family or 0
+    end
+    if _G.GetContainerNumFreeSlots then
+        local free, family = _G.GetContainerNumFreeSlots(bag)
+        return free or 0, family or 0
+    end
+    return 0, 0
+end
+
+function C.EquipItem(item)
+    if C_Item and C_Item.EquipItemByName then
+        C_Item.EquipItemByName(item)
+    elseif _G.EquipItemByName then
+        _G.EquipItemByName(item)
+    end
+end
+
+-- "1g 72s 40c" with coin icons.
+function C.MoneyText(copper)
+    if C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString then
+        return C_CurrencyInfo.GetCoinTextureString(copper)
+    end
+    if _G.GetCoinTextureString then return _G.GetCoinTextureString(copper) end
+    return ("%dg %ds %dc"):format(copper / 10000, copper / 100 % 100, copper % 100)
+end
+
+---------------------------------------------------------------------------
+-- Merchants
+---------------------------------------------------------------------------
+
+-- One merchant slot: { id, price, bundle, available, purchasable, extended }.
+-- `price` buys `bundle` items (vendor arrows come 200 at a time); `available`
+-- is -1 when the stock is unlimited.
+function C.GetMerchantItem(index)
+    local id = GetMerchantItemID(index)
+    if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
+        local info = C_MerchantFrame.GetItemInfo(index)
+        if not info then return nil end
+        return { id = id, price = info.price or 0, bundle = info.stackCount or 1, available = info.numAvailable or -1,
+                 purchasable = info.isPurchasable ~= false, extended = info.hasExtendedCost == true }
+    end
+    local legacy = _G.GetMerchantItemInfo
+    if not legacy then return nil end
+    local name, _, price, bundle, available, purchasable, _, extended = legacy(index)
+    if not name then return nil end
+    return { id = id, price = price or 0, bundle = bundle or 1, available = available or -1,
+             purchasable = purchasable ~= false, extended = extended == true }
+end
+
 ---------------------------------------------------------------------------
 -- Tracking (minimap). On Forever the hunter trackers are also self-buffs,
 -- so callers check both.
