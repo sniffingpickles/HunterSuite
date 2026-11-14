@@ -28,8 +28,6 @@ function Traps:Build()
     for i = 1, MAX_ROWS do
         local row = CreateFrame("Frame", nil, f)
         row:SetHeight(ROW_H)
-        row:SetPoint("TOPLEFT", 0, -(i - 1) * (ROW_H + ROW_GAP))
-        row:SetPoint("TOPRIGHT", 0, -(i - 1) * (ROW_H + ROW_GAP))
         row.iconFrame = UI:Icon(row, ROW_H)
         row.iconFrame:SetPoint("LEFT")
         row.bar = UI:Bar(row, { height = ROW_H - 2 })
@@ -42,6 +40,7 @@ function Traps:Build()
         row:Hide()
         f.rows[i] = row
     end
+    UI:StackRows(f, f.rows, ROW_H + ROW_GAP)
     f:SetScript("OnUpdate", function() Traps:Draw() end)
     f:Hide()
     self.frame = f
@@ -102,8 +101,6 @@ function Traps:Draw()
             row:Hide()
         end
     end
-    local n = math.min(#list, MAX_ROWS)
-    f:SetHeight(math.max(ROW_H, n * ROW_H + (n - 1) * ROW_GAP))
 end
 
 function Traps:OnPlaced(spellID)
@@ -149,6 +146,7 @@ function Traps:OnDisable()
 end
 
 function Traps:Refresh()
+    UI:StackRows(self.frame, self.frame.rows, ROW_H + ROW_GAP)
     UI:ApplyPosition(self.frame)
 end
 

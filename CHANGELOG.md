@@ -1,11 +1,10 @@
-# HunterSuite 4.6.0
+# HunterSuite 4.7.0
 
-Choose what the pet card feeds, and keep the foods you want to hold on to.
+Choose which way your timer bars and alerts grow.
 
 ### New
-- **Pick the food yourself:** click the food icon on the pet card for a list of every food your pet will eat in your bags. The card then feeds only that food for this pet family, on this character, and shows no food rather than switching when it runs out. Auto, at the top of the list, goes back to your Food to use setting.
-- **Never feed a food:** right-click a food in that list and Auto skips it, for rare foods or quest items you want to keep. Right-click it again to allow it, or use Allow all again under Pet card in the settings.
+- **Grow up or down:** under Appearance > Layout, sting and trap timers and the alert stack add rows downward or upward from the spot you placed them. Growing up, a docked sting bar sits above the Auto Shot bar instead of under it.
 
 ### Changed
-- The Feed Pet key binding is now called Feed Pet (card's food), since it feeds your pick when you have one.
-- `/hs reset` also clears your food picks and never-fed foods.
+- The first sting or trap row now stays on its spot as more rows appear, instead of the whole stack shifting. In edit mode, the highlight covers that first row and the sample rows follow it.
+- The alert stack's own Grow setting is now this shared one. If you had alerts growing up, your timer bars grow up too.

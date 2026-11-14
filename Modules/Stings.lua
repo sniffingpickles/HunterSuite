@@ -387,12 +387,8 @@ function Stings:BuildBar()
     local f = UI:Element("HunterSuiteStings", self.db, L.STINGS)
     f:SetSize(self.db.barWidth or 200, ROW_H)
     f.rows = {}
-    for i = 1, MAX_ROWS do
-        local row = NewRow(f)
-        row:SetPoint("TOPLEFT", 0, -(i - 1) * (ROW_H + ROW_GAP))
-        row:SetPoint("TOPRIGHT", 0, -(i - 1) * (ROW_H + ROW_GAP))
-        f.rows[i] = row
-    end
+    for i = 1, MAX_ROWS do f.rows[i] = NewRow(f) end
+    UI:StackRows(f, f.rows, ROW_H + ROW_GAP)
     f:SetScript("OnUpdate", function() Stings:Draw() end)
     f:Hide()
     self.bar = f
@@ -403,11 +399,18 @@ end
 function Stings:Layout()
     local f, db = self.bar, self.db
     local shot = HS:GetModule("shotTimer")
+    UI:StackRows(f, f.rows, ROW_H + ROW_GAP)
     f:ClearAllPoints()
     if db.attach and shot and shot.enabled and shot.frame then
         f:SetScale(HS.db.appearance.scale or 1)
-        f:SetPoint("TOPLEFT", shot.frame, "BOTTOMLEFT", 0, -DOCK_GAP)
-        f:SetPoint("TOPRIGHT", shot.frame, "BOTTOMRIGHT", 0, -DOCK_GAP)
+        -- Growing up, the bar docks above the Auto Shot bar instead of under it.
+        if UI:GrowsUp() then
+            f:SetPoint("BOTTOMLEFT", shot.frame, "TOPLEFT", 0, ROW_GAP)
+            f:SetPoint("BOTTOMRIGHT", shot.frame, "TOPRIGHT", 0, ROW_GAP)
+        else
+            f:SetPoint("TOPLEFT", shot.frame, "BOTTOMLEFT", 0, -DOCK_GAP)
+            f:SetPoint("TOPRIGHT", shot.frame, "BOTTOMRIGHT", 0, -DOCK_GAP)
+        end
         self.docked = true
     else
         self.docked = false
@@ -502,8 +505,6 @@ function Stings:Draw()
             row:Hide()
         end
     end
-    local n = math.min(#list, MAX_ROWS)
-    f:SetHeight(math.max(ROW_H, n * ROW_H + (n - 1) * ROW_GAP))
 end
 
 ---------------------------------------------------------------------------

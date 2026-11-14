@@ -150,7 +150,6 @@ O.pages = {
             {
                 title = L.ALERT_STACK, icon = 132329,
                 items = {
-                    { type = "segmented", path = "alerts.grow", label = L.GROW, values = { { "DOWN", L.DOWN }, { "UP", L.UP } } },
                     { type = "button", label = L.PREVIEW, text = L.SHOW_TEST_ALERTS, action = function() HS.Alerts:Test() end },
                 },
             },
@@ -232,6 +231,8 @@ O.pages = {
                 items = {
                     { type = "slider", path = "appearance.scale", label = L.HUD_SCALE, min = 0.6, max = 1.6, step = 0.05, format = scale },
                     { type = "slider", path = "appearance.gridSize", label = L.EDIT_MODE_GRID, min = 4, max = 48, step = 2, format = plain },
+                    { type = "segmented", path = "appearance.grow", label = L.STACKS_GROW, values = { { "DOWN", L.DOWN }, { "UP", L.UP } },
+                      desc = L.STACKS_GROW_DESCRIPTION },
                     { type = "toggle", path = "appearance.minimap.hide", label = L.HIDE_MINIMAP_BUTTON },
                     { type = "toggle", path = "appearance.sounds", label = L.PLAY_SOUNDS },
                     { type = "button", label = L.FRAMES, text = L.OPEN_EDIT_MODE, action = function() HS:HideConfig(); HS.Movers:Start() end },

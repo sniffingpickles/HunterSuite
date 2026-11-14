@@ -58,6 +58,7 @@ All reminders share one tidy stack. Right-click one to dismiss it.
   - Drag any frame; it snaps to a grid (hold Shift to place freely).
   - Arrow keys nudge the selected frame (Shift moves 10px).
   - Right-click a frame to reset it.
+- **Grow up or down:** under **Appearance > Layout**, sting and trap timers and the alert stack add rows downward or upward from the spot you placed them. A docked sting bar sits above the Auto Shot bar when it grows up.
 - Choose an accent colour, font, bar texture, HUD scale and shadows under **Appearance**. On English and European clients, fonts from EllesmereUI or SharedMedia are picked up automatically. Chinese clients keep the game's font, which has the Chinese characters.
 
 ## Localization

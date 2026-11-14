@@ -118,7 +118,7 @@ end
 
 function A:Layout()
     local anc = GetAnchor()
-    local down = HS.db.alerts.grow ~= "UP"
+    local down = not UI:GrowsUp()
     local scale = HS.db.appearance.scale or 1
     for i, card in ipairs(Sorted()) do
         card:SetScale(scale)

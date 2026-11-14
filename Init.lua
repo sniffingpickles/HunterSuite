@@ -13,7 +13,7 @@ HS.title = "HunterSuite"
 HS.state = { editMode = false }
 
 local GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-HS.version = GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version") or "4.6.0"
+HS.version = GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version") or "4.7.0"
 
 -- Client detection. WoW Forever (game type "camelot") is the 12.x engine with
 -- vanilla content and reports a 1.60+ toc, so the interface number is the one
@@ -112,6 +112,7 @@ HS.defaults = {
         sounds = true,
         snapToGrid = true,
         gridSize = 16,
+        grow = "DOWN",          -- DOWN | UP: sting and trap timers and alerts stack this way from their spot
         minimap = { hide = false, angle = 215 },
         configScale = 1.0,
     },
@@ -159,7 +160,6 @@ HS.defaults = {
         position = { point = "CENTER", x = 170, y = -200 },
     },
     alerts = {
-        grow = "DOWN",
         position = { point = "TOP", x = 0, y = -160 },
     },
     aspects = {
@@ -282,7 +282,16 @@ function HS:InitDB()
         saved = MigrateFrom3(saved)
         self.migratedFrom3 = true
     end
-    saved.schema = 4
+    -- 5: the alert stack's Grow setting became one for every stack (appearance.grow).
+    local p = saved.profile
+    if (saved.schema or 0) < 5 and type(p) == "table" and type(p.alerts) == "table" then
+        if p.alerts.grow == "UP" then
+            p.appearance = type(p.appearance) == "table" and p.appearance or {}
+            p.appearance.grow = "UP"
+        end
+        p.alerts.grow = nil
+    end
+    saved.schema = 5
     saved.profile = CopyDefaults(self.defaults, saved.profile or {})
     _G.HunterSuiteDB = saved
     self.sv = saved

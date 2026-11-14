@@ -382,3 +382,25 @@ function UI:ApplyPosition(f)
         apply()
     end
 end
+
+-- Stacked rows (sting and trap timers, alerts) hang off a one-row anchor at
+-- the saved spot, so the first row stays put: down from the anchor's top, or
+-- up from its bottom (Appearance > Layout).
+function UI:GrowsUp()
+    return HS.db.appearance.grow == "UP"
+end
+
+function UI:StackRows(anchor, rows, step)
+    local up = self:GrowsUp()
+    for i, row in ipairs(rows) do
+        local offset = (i - 1) * step
+        row:ClearAllPoints()
+        if up then
+            row:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 0, offset)
+            row:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 0, offset)
+        else
+            row:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, -offset)
+            row:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", 0, -offset)
+        end
+    end
+end
